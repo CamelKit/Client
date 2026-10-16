@@ -19,16 +19,16 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "NO_SANDBOX=1 electron-vite dev",
-    "start": "npm run build && NO_SANDBOX=1 electron-vite preview",
+    "start": "pnpm run build && NO_SANDBOX=1 electron-vite preview",
     "preview": "NO_SANDBOX=1 electron-vite preview",
     "build": "electron-vite build && node scripts/copy-plugin-data.mjs",
     "sync:plugin": "node scripts/sync-plugin.mjs",
-    "dist": "npm run sync:plugin && npm run build && electron-builder --publish never",
-    "try": "npm run sync:plugin && npm run build:unpack && node scripts/run-unpacked.mjs",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux",
+    "dist": "pnpm run sync:plugin && pnpm run build && electron-builder --publish never",
+    "try": "pnpm run sync:plugin && pnpm run build:unpack && node scripts/run-unpacked.mjs",
+    "build:unpack": "pnpm run build && electron-builder --dir",
+    "build:win": "pnpm run build && electron-builder --win",
+    "build:mac": "pnpm run build && electron-builder --mac",
+    "build:linux": "pnpm run build && electron-builder --linux",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,html}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,html}\"",
     "format:fix": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,html}\" --ignore-unknown",
@@ -152,6 +152,6 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.1",
     "vite-plugin-electron": "^0.29.0"
-  },
-  "packageManager": "yarn@4.10.3"
+  }
 }
+

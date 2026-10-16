@@ -27,11 +27,11 @@
 
 import { app, ipcMain, session, BrowserWindow } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
-import net from 'net';
-import crypto from 'crypto';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import * as net from 'net';
+import * as crypto from 'crypto';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const CHROME_CANDIDATES = [
     '/usr/bin/google-chrome',
@@ -41,7 +41,7 @@ const CHROME_CANDIDATES = [
     '/opt/google/chrome/chrome',
 ];
 
-const LOGIN_URL = 'https://evilquest.net/play';
+const LOGIN_URL = 'https://memoriesofmagic.com/play';
 // The SPA authenticates a TOKEN it stores in localStorage (not just the cookie):
 // on load it reads evilquest_token/evilquest_username and only then POSTs /api/validate.
 // So a real login relay must capture these too — the cookie alone never logs you in.

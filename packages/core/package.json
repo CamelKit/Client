@@ -21,7 +21,7 @@
   },
   "license": "GPL-3.0-only",
   "author": "ryelite",
-  "type": "commonjs",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
@@ -36,14 +36,13 @@
   ],
   "scripts": {
     "build": "node esbuild.mjs && tsc --emitDeclarationOnly",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "idb": "^8.0.3",
-    "on-change": "^5.0.1",
-    "tsc": "^2.0.4"
+    "on-change": "^5.0.1"
   },
   "devDependencies": {
     "esbuild": "^0.25.8",
@@ -54,6 +53,5 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "packageManager": "yarn@4.9.2"
+  }
 }

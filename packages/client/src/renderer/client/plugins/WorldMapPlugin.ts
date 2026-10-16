@@ -967,7 +967,7 @@ export default class WorldMapPlugin extends Plugin {
                 resolve(this.stoneTexBaked);
             };
             img.onerror = () => resolve(null);
-            img.src = 'https://evilquest.net/ui/stone-dark.png';
+            img.src = 'https://memoriesofmagic.com/ui/stone-dark.png';
         });
     }
 
@@ -1450,7 +1450,7 @@ export default class WorldMapPlugin extends Plugin {
             }
         } catch { /* ignore bad cache */ }
         try {
-            const res = await fetch('https://evilquest.net/api/world-map', { credentials: 'same-origin' });
+            const res = await fetch('https://memoriesofmagic.com/api/world-map', { credentials: 'same-origin' });
             if (!res.ok) return;
             const m = (await res.json())?.map;
             if (!m || !Array.isArray(m.npcSpawns)) return;
@@ -2162,7 +2162,7 @@ export default class WorldMapPlugin extends Plugin {
         const json = JSON.stringify(data);
         // The window is a file:// page (cross-origin to evilquest.net), so it can't rotate the
         // stone tile itself — use the pre-baked rotated data URL, falling back to the raw tile.
-        const bg = this.stoneTexBaked || 'https://evilquest.net/ui/stone-dark.png';
+        const bg = this.stoneTexBaked || 'https://memoriesofmagic.com/ui/stone-dark.png';
         return `<!doctype html><html><head><meta charset="utf-8"><title>EvilLite — World Map</title><style>
 html,body{margin:0;height:100%;background:#101012;color:#e8e8e8;font:13px/1.4 Inter,system-ui,sans-serif;overflow:hidden;user-select:none}
 #app{display:flex;flex-direction:column;height:100vh}

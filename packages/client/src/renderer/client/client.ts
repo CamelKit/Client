@@ -24,9 +24,9 @@ import '@static/css/item-tooltip.css';
 import './helpers/titlebarHelpers.js';
 import { setupWorldSelectorObserver } from './helpers/worldSelectHelper';
 
-// Note: With the page running on https://evilquest.net, relative paths like
+// Note: With the page running on https://memoriesofmagic.com, relative paths like
 // /assets/..., /data/..., /maps/..., /ui/..., /api/... resolve naturally to
-// https://evilquest.net/... which our protocol.handle('https') intercepts.
+// https://memoriesofmagic.com/... which our protocol.handle('https') intercepts.
 // No fetch/XHR/createElement patching is needed for URL rewriting.
 
 
@@ -298,8 +298,8 @@ async function obtainGameClient() {
     return Promise.resolve("");
 }
 
-// GET Request to https://evilquest.net/play
-const response = await fetch('https://evilquest.net/play');
+// GET Request to https://memoriesofmagic.com/play
+const response = await fetch('https://memoriesofmagic.com/play');
 const text = await response.text();
 
 const parser = new DOMParser();
@@ -316,9 +316,9 @@ Array.from(doc.head.children).forEach(child => {
         if (child.hasAttribute('href')) {
             const href = child.getAttribute('href');
             if (href && href.startsWith('/assets/')) {
-                child.setAttribute('href', href.replace('/assets/', 'https://evilquest.net/assets/'));
+                child.setAttribute('href', href.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
             } else if (href && href.startsWith('/')) {
-                child.setAttribute('href', 'https://evilquest.net' + href);
+                child.setAttribute('href', 'https://memoriesofmagic.com' + href);
             }
         }
         document.head.appendChild(child.cloneNode(true));
@@ -333,9 +333,9 @@ Array.from(doc.body.children).forEach(child => {
         if (child.hasAttribute('href')) {
             const href = child.getAttribute('href');
             if (href && href.startsWith('/assets/')) {
-                child.setAttribute('href', href.replace('/assets/', 'https://evilquest.net/assets/'));
+                child.setAttribute('href', href.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
             } else if (href && href.startsWith('/')) {
-                child.setAttribute('href', 'https://evilquest.net' + href);
+                child.setAttribute('href', 'https://memoriesofmagic.com' + href);
             }
         }
 
@@ -362,9 +362,9 @@ scripts.forEach(script => {
     if (newScript.hasAttribute('src')) {
         const src = newScript.getAttribute('src');
         if (src && src.startsWith('/assets/')) {
-            newScript.setAttribute('src', src.replace('/assets/', 'https://evilquest.net/assets/'));
+            newScript.setAttribute('src', src.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
         } else if (src && src.startsWith('/')) {
-            newScript.setAttribute('src', 'https://evilquest.net' + src);
+            newScript.setAttribute('src', 'https://memoriesofmagic.com' + src);
         }
     }
 

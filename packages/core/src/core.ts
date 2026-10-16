@@ -47,7 +47,16 @@ export class Highlite {
         document.highlite = {
             managers: {},
             gameHooks: {},
-            gameLookups: {}
+            gameLookups: {
+                InventoryActions: { 0: 'use', 1: 'inspect', 2: 'drop', use: 0, inspect: 1, drop: 2 },
+                GameWorldActions: { 0: 'attack', 1: 'talk_to', attack: 0, talk_to: 1 },
+                Skills: ['weaponry', 'strength', 'defence', 'goodmagic', 'evilmagic', 'archery', 'hitpoints', 'woodcutting', 'fishing', 'cooking', 'mining', 'smithing'],
+                SkillsMap: { weaponry: 0, strength: 1, defence: 2, goodmagic: 3, evilmagic: 4, archery: 5, hitpoints: 6, woodcutting: 7, fishing: 8, cooking: 9, mining: 10, smithing: 11 },
+                EntityTypes: { 0: 'Environment', 1: 'Item', 2: 'Player', 3: 'NPC' },
+                PlayerActions: { 0: 'IdleState', 1: 'MovingState' },
+                GameInterfaces: { 0: 'Inventory', 1: 'Bank', 2: 'Shop' },
+                SpellTypes: { 0: 'combat', 1: 'status', 2: 'inventory', 3: 'teleport' }
+            }
         };
 
         this.pluginManager = new PluginManager();
@@ -77,10 +86,10 @@ export class Highlite {
     // NOTE: The login screen buttons attempt to open up in the ryelite window without these.
     async loginHooks(fnName: string, ...args: any[]) {
         if (fnName === 'LoginScreen_handleRegisterButtonClicked') {
-            window.open('https://highspell.com/register', '_blank');
+            window.open('https://memoriesofmagic.com/register', '_blank');
         }
         if (fnName === 'LoginScreen_handleHomeButtonClicked') {
-            window.open('https://highspell.com/', '_blank');
+            window.open('https://memoriesofmagic.com/', '_blank');
         }
     }
 
@@ -125,9 +134,14 @@ export class Highlite {
         this.hookManager.registerClassOverrideHook('LoginScreen', '_handleHomeButtonClicked', this.loginHooks);
 
         // Start Plugins and Settings after Login
+        this.hookManager.registerClassHook('SocketManager', 'markGameCryptoReady', this.startHook.bind(this));
+        this.hookManager.registerClassHook('GameEngine', 'resolveLoginReady', this.startHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', '_loggedIn', this.startHook.bind(this));
 
         // Stop Plugins and Settings during logout events
+        this.hookManager.registerClassHook('GameEngine', 'handleConnectionLost', this.stopHook.bind(this));
+        this.hookManager.registerClassHook('SocketManager', 'closeQuietly', this.stopHook.bind(this));
+        this.hookManager.registerClassHook('SocketManager', 'failGameSocket', this.stopHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', '_handleLostConnection', this.stopHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', '_handleReconnectFailed', this.stopHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', '_handleConnectFailed', this.stopHook.bind(this));

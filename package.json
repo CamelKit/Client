@@ -1,8 +1,16 @@
 {
   "name": "evil-lite",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
-  "packageManager": "yarn@4.10.3"
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "start": "turbo start",
+    "format": "turbo format",
+    "format:check": "turbo format:check",
+    "format:fix": "turbo format:fix"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.12"
+  }
 }

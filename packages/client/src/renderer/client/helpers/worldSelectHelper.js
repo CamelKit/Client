@@ -13,9 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Fetches and parses world data from https://highspell.com/play
+// Fetches and parses world data from https://memoriesofmagic.com/play
 export async function fetchWorlds() {
-    const res = await fetch('https://highspell.com/play');
+    const res = await fetch('https://memoriesofmagic.com/play');
     const html = await res.text();
     // Parse worlds using DOMParser
     const parser = new DOMParser();

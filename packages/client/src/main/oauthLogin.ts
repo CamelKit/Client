@@ -31,12 +31,12 @@
 // packaged release (overridable via EVILLITE_OAUTH_CLIENT).
 
 import { app, ipcMain, session, shell, net, safeStorage } from 'electron';
-import http from 'http';
-import crypto from 'crypto';
-import path from 'path';
-import fs from 'fs';
+import * as http from 'http';
+import * as crypto from 'crypto';
+import * as path from 'path';
+import * as fs from 'fs';
 
-const BASE = 'https://evilquest.net';
+const BASE = 'https://memoriesofmagic.com';
 const AUTHORIZE = `${BASE}/oauth/authorize`;
 const TOKEN = `${BASE}/oauth/token`;
 const REVOKE = `${BASE}/oauth/revoke`;

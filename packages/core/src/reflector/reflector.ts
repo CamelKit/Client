@@ -30,6 +30,9 @@ export class Reflector {
     // Define the source
     private static source: string;
 
+    // Define the AST
+    private static ast: Node;
+
     // Define the classes
     private static classes: ClassInfo[] = [];
 
@@ -42,47 +45,37 @@ export class Reflector {
     // Define the enum hooks
     private static enumHooks: HookMap = new Map();
 
-    // Look the hooks from client source
-    // Backwards-compatible entry point — treats the input as a single module.
-    // Prefer loadHooksFromModules() for the real multi-bundle game source.
-    static async loadHooksFromSource(source : string): Promise<void> {
-        return Reflector.loadHooksFromModules([source]);
+    // Look the hooks from client source (single module or array of modules)
+    static async loadHooksFromSource(source : string | string[]): Promise<void> {
+        if (Array.isArray(source)) {
+            await Reflector.loadHooksFromModules(source);
+            return;
+        }
+
+        await Reflector.loadHooksFromModules([source]);
     }
 
-    // Load the hooks from the per-module game source.
-    // The game ships as multiple minified ESM bundles that reuse top-level
-    // identifiers (e.g. `U`, `it`). Concatenating them into one
-    // sourceType:'module' parse makes acorn throw on the first duplicate
-    // declaration, which previously wiped out *every* hook. Parsing each module
-    // independently isolates failures and mirrors how the modules execute.
-    static async loadHooksFromModules(modules : string[]): Promise<void> {
-
-        // Combined source, used for textual `contains` checks via global offsets.
-        // Must match the '\n'-joined layout the offsets below assume.
-        Reflector.source = modules.join('\n');
-
-        // Clear previous state for repeated parsing
+    // Load hooks from an array of independent JS module sources
+    static async loadHooksFromModules(modules: string[]): Promise<void> {
         Reflector.classes = [];
         Reflector.enums = [];
 
-        // Parse each module in isolation, translating its node offsets into the
-        // combined-source coordinate space so `contains` slicing still works.
-        let offset = 0;
-        for (const moduleSource of modules) {
+        for (const modSource of modules) {
+            if (!modSource || typeof modSource !== 'string') continue;
             try {
-                const ast = parse(moduleSource, {
+                const ast = parse(modSource, {
                     ecmaVersion: 'latest',
                     sourceType: 'module'
                 }) as unknown as Node;
 
-                Reflector.extractClasses(ast, offset);
-                Reflector.extractEnums(ast, offset);
-            } catch (e) {
-                console.warn('[Reflector] Skipping unparseable module:', (e as Error)?.message);
-            }
+                Reflector.source = modSource;
+                Reflector.ast = ast;
 
-            // +1 accounts for the '\n' inserted by modules.join('\n')
-            offset += moduleSource.length + 1;
+                Reflector.extractClassesFromAst(ast, modSource);
+                Reflector.extractEnumsFromAst(ast, modSource);
+            } catch (err: any) {
+                console.error('[Reflector] Error parsing module AST:', err.message);
+            }
         }
 
         // Load the hooks
@@ -94,91 +87,99 @@ export class Reflector {
 
     // Load the hooks from the database
     static async loadHooksFromDB(): Promise<void> {
+        try {
+            if (typeof indexedDB === 'undefined') return;
 
-        // Link the database
-        const highliteResources = new HighliteResources();
+            // Link the database
+            const highliteResources = new HighliteResources();
 
-        // Initialise
-        await highliteResources.init();
-        
-        // Read from the client class hooks
-        const clientClassHooks = await highliteResources.getItem<HookEntries>('clientClassHooks');
+            // Initialise
+            await highliteResources.init();
+            
+            // Read from the client class hooks
+            const clientClassHooks = await highliteResources.getItem<HookEntries>('clientClassHooks');
 
-        // If we have stored enum hooks
-        if (Array.isArray(clientClassHooks)) {
+            // If we have stored enum hooks
+            if (Array.isArray(clientClassHooks)) {
+                // Rehydrate
+                Reflector.classHooks = Reflector.deserializeHookEntries(clientClassHooks);
+            }
 
-            // Rehydrate
-            Reflector.classHooks = Reflector.deserializeHookEntries(clientClassHooks);
-        }
+            // Read from the client enum hooks
+            const clientEnumHooks = await highliteResources.getItem<HookEntries>('clientEnumHooks');
 
-        // Read from the client enum hooks
-        const clientEnumHooks = await highliteResources.getItem<HookEntries>('clientEnumHooks');
-
-        // If we have stored enum hooks
-        if (Array.isArray(clientEnumHooks)) {
-
-            // Rehydrate
-            Reflector.enumHooks = Reflector.deserializeHookEntries(clientEnumHooks);
+            // If we have stored enum hooks
+            if (Array.isArray(clientEnumHooks)) {
+                // Rehydrate
+                Reflector.enumHooks = Reflector.deserializeHookEntries(clientEnumHooks);
+            }
+        } catch (err: any) {
+            console.warn('[Reflector] Failed to load hooks from DB:', err.message);
         }
     }
 
     // Save the hooks to the database
     private static async saveHooks(): Promise<void> {
+        try {
+            if (typeof indexedDB === 'undefined') return;
 
-        // Link the database
-        const highliteResources = new HighliteResources();
+            // Link the database
+            const highliteResources = new HighliteResources();
 
-        // Initialise
-        await highliteResources.init();
+            // Initialise
+            await highliteResources.init();
 
-        // Save the class hooks
-        await highliteResources.setItem('clientClassHooks', Reflector.serializeHookMap(Reflector.classHooks));
-        
-        // Save the enum hooks
-        await highliteResources.setItem('clientEnumHooks', Reflector.serializeHookMap(Reflector.enumHooks));    
+            // Save the class hooks
+            await highliteResources.setItem('clientClassHooks', Reflector.serializeHookMap(Reflector.classHooks));
+            
+            // Save the enum hooks
+            await highliteResources.setItem('clientEnumHooks', Reflector.serializeHookMap(Reflector.enumHooks));    
+        } catch (err: any) {
+            console.warn('[Reflector] Failed to save hooks to DB:', err.message);
+        }
     }
 
     // Check if we have any previously saved hooks
     static async hasSavedHooks(): Promise<boolean> {
+        try {
+            if (typeof indexedDB === 'undefined') return false;
 
-        // Link the database
-        const highliteResources = new HighliteResources();
+            // Link the database
+            const highliteResources = new HighliteResources();
 
-        // Initialise
-        await highliteResources.init();
+            // Initialise
+            await highliteResources.init();
 
-        // Read the stored class hooks
-        const clientClassHooks = await highliteResources.getItem<HookEntries>('clientClassHooks');
+            // Read the stored class hooks
+            const clientClassHooks = await highliteResources.getItem<HookEntries>('clientClassHooks');
 
-        // Read the stored enum hooks
-        const clientEnumHooks = await highliteResources.getItem<HookEntries>('clientEnumHooks');
+            // Read the stored enum hooks
+            const clientEnumHooks = await highliteResources.getItem<HookEntries>('clientEnumHooks');
 
-        // Return true if either collection has at least one entry
-        const classCount = Array.isArray(clientClassHooks) ? clientClassHooks.length : 0;
-        const enumCount = Array.isArray(clientEnumHooks) ? clientEnumHooks.length  : 0;
+            // Return true if either collection has at least one entry
+            const classCount = Array.isArray(clientClassHooks) ? clientClassHooks.length : 0;
+            const enumCount = Array.isArray(clientEnumHooks) ? clientEnumHooks.length  : 0;
 
-        return (classCount + enumCount) > 0;
+            return (classCount + enumCount) > 0;
+        } catch (err: any) {
+            console.warn('[Reflector] Failed to check saved hooks:', err.message);
+            return false;
+        }
     }
 
-    // Extract the classes from a parsed module AST.
-    // `offset` shifts node positions into the combined-source coordinate space.
-    private static extractClasses(ast : Node, offset = 0) : ClassInfo[] {
-
-        // Walk through the entire AST
+    // Extract the classes from an AST
+    private static extractClassesFromAst(ast: Node, source: string): ClassInfo[] {
         walk.simple(ast, {
-
-            // Handle class declarations
-            ClassDeclaration(node : any) {
-
-                // Define
-                const c : ClassInfo = {
-                    name: node.id ?.name ?? '',
+            ClassDeclaration(node: any) {
+                const c: ClassInfo = {
+                    name: node.id?.name ?? '',
                     staticFields: [],
                     instanceFields: [],
                     staticMethods: [],
                     instanceMethods: [],
-                    start: node.start + offset,
-                    end: node.end + offset
+                    start: node.start,
+                    end: node.end,
+                    source: source.slice(node.start, node.end)
                 };
 
                 for (const m of node.body.body) {
@@ -186,32 +187,74 @@ export class Reflector {
                         const list = m.static
                             ? c.staticMethods
                             : c.instanceMethods;
-                        list.push({name: m.key.name, kind: m.kind});
+                        list.push({ name: m.key.name, kind: m.kind });
                     } else if (m.type === 'PropertyDefinition' || m.type === 'ClassProperty') {
                         const list = m.static
                             ? c.staticFields
                             : c.instanceFields;
-                        list.push(m.key.name);
+                        if (m.key?.name) list.push(m.key.name);
                     }
                 }
 
-                // Store the class
                 Reflector.classes.push(c);
             }
         });
         return Reflector.classes;
     }
 
-    // Extract the enums from a parsed module AST.
-    // `offset` shifts node positions into the combined-source coordinate space.
-    private static extractEnums(ast : Node, offset = 0) : EnumInfo[] {
+    // Extract the classes from the AST
+    private static extractClasses(): ClassInfo[] {
+        if (Reflector.ast && Reflector.source) {
+            return Reflector.extractClassesFromAst(Reflector.ast, Reflector.source);
+        }
+        return Reflector.classes;
+    }
 
-        // Walk through the entire AST
+    // Extract the enums from an AST
+    private static extractEnumsFromAst(ast: Node, _source: string): EnumInfo[] {
         walk.simple(ast, {
-
+            // Modern Object and Array expressions
+            VariableDeclarator(node: any) {
+                if (node.id?.type === 'Identifier') {
+                    const varName = node.id.name;
+                    if (node.init?.type === 'ObjectExpression') {
+                        const memberSet = new Set<string>();
+                        for (const prop of node.init.properties) {
+                            if (prop.type === 'Property') {
+                                const k = prop.key?.name || (prop.key?.type === 'Literal' ? String(prop.key.value) : null);
+                                const v = prop.value?.type === 'Literal' ? String(prop.value.value) : null;
+                                if (k) memberSet.add(k.toLowerCase());
+                                if (v) memberSet.add(v.toLowerCase());
+                            }
+                        }
+                        if (memberSet.size >= 2) {
+                            Reflector.enums.push({
+                                name: varName,
+                                members: Array.from(memberSet),
+                                start: node.start,
+                                end: node.end
+                            });
+                        }
+                    } else if (node.init?.type === 'ArrayExpression') {
+                        const memberSet = new Set<string>();
+                        for (const el of node.init.elements) {
+                            if (el?.type === 'Literal' && typeof el.value === 'string') {
+                                memberSet.add(el.value.toLowerCase());
+                            }
+                        }
+                        if (memberSet.size >= 2) {
+                            Reflector.enums.push({
+                                name: varName,
+                                members: Array.from(memberSet),
+                                start: node.start,
+                                end: node.end
+                            });
+                        }
+                    }
+                }
+            },
             // Pattern 1: !function(e){ ... }(E || (E = {}));
             CallExpression(node: any) {
-
                 if (node.arguments.length !== 1) return;
                 const arg = node.arguments[0];
                 if (arg.type !== 'LogicalExpression' || arg.operator !== '||') return;
@@ -232,7 +275,7 @@ export class Reflector {
                 const memberSet = new Set<string>();
                 walk.simple(callee.body, {
                     Literal(l: any) {
-                        if (typeof l.value === 'string') memberSet.add(l.value);
+                        if (typeof l.value === 'string') memberSet.add(l.value.toLowerCase());
                     }
                 });
 
@@ -241,15 +284,21 @@ export class Reflector {
                 const e: EnumInfo = {
                     name: arg.left.name,
                     members: Array.from(memberSet),
-                    start: node.start + offset,
-                    end: node.end + offset
+                    start: node.start,
+                    end: node.end
                 };
 
                 Reflector.enums.push(e);
             }
         });
+        return Reflector.enums;
+    }
 
-        // Return the enums
+    // Extract the enums from the AST
+    private static extractEnums(): EnumInfo[] {
+        if (Reflector.ast && Reflector.source) {
+            return Reflector.extractEnumsFromAst(Reflector.ast, Reflector.source);
+        }
         return Reflector.enums;
     }
 
@@ -321,9 +370,9 @@ export class Reflector {
 
             // If the signature textual match is set
             if (signature.contains) {
-
+                const src = c.source ?? (Reflector.source ? Reflector.source.slice(c.start, c.end) : '');
                 // Return false if the string doesn't contain the text
-                if (Reflector.source.slice(c.start, c.end).indexOf(signature.contains) < 0) return false;
+                if (src.indexOf(signature.contains) < 0) return false;
             }
 
             // Return true as all checks passed
@@ -334,15 +383,18 @@ export class Reflector {
     // Function to find a statement by signature
     // NOTE: Keep this public so easier to develop hooks for new features
     static findEnumBySignature(signature: EnumSignature): EnumInfo | undefined {
+        const lowerIncludes = signature.includes.map(s => s.toLowerCase());
+        const lowerExcludes = signature.excludes?.map(s => s.toLowerCase());
 
         // Return the enum with the required signature
-       return Reflector.enums.find(e => {
+        return Reflector.enums.find(e => {
+            const memberSet = new Set(e.members.map(m => m.toLowerCase()));
 
-            // Return false if we can't find all the enum'sexpected fields
-            if (!signature.includes.every(m => e.members.includes(m))) return false;
+            // Return false if we can't find all the enum's expected fields
+            if (!lowerIncludes.every(m => memberSet.has(m))) return false;
 
-            // Return false if we have any of the excluded fileds
-            if (signature.excludes && signature.excludes.some(x => e.members.includes(x))) return false;
+            // Return false if we have any of the excluded fields
+            if (lowerExcludes && lowerExcludes.some(x => memberSet.has(x))) return false;
 
             // Return true if all checks pass
             return true;

@@ -99,7 +99,7 @@ app.on("ready", async () => {
         // renderer from disk. Using app.isPackaged here was the bug: preview is unpackaged but
         // has no Vite dev server, so it proxied to a dead localhost:5173 (ERR_CONNECTION_REFUSED).
         const devRendererUrl = process.env['ELECTRON_RENDERER_URL'];
-        if (url.hostname === 'evilquest.net' && url.pathname.startsWith('/__evillite__/')) {
+        if ((url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') && url.pathname.startsWith('/__evillite__/')) {
             const filePart = url.pathname.replace('/__evillite__/', '');
             if (devRendererUrl) {
                 // Dev: proxy to Vite (TypeScript transforms + HMR)
@@ -123,7 +123,7 @@ app.on("ready", async () => {
         }
 
         // Proxy Vite dev server internal paths (HMR, node_modules, source files) — dev only.
-        if (devRendererUrl && url.hostname === 'evilquest.net' &&
+        if (devRendererUrl && (url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') &&
             (url.pathname.startsWith('/@') ||
              url.pathname.startsWith('/node_modules/') ||
              url.pathname.startsWith('/client/') ||
@@ -138,8 +138,8 @@ app.on("ready", async () => {
             }
         }
 
-        // ── 2. Proxy evilquest.net requests (game assets, API, /play) ────────
-        if (url.hostname === 'evilquest.net') {
+        // ── 2. Proxy memoriesofmagic.com / evilquest.net requests (game assets, API, /play) ────────
+        if (url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') {
             const fullUrl = request.url;
             const isApi = url.pathname.startsWith('/api/') || url.pathname === '/play';
             const isAsset = url.pathname.startsWith('/assets/');
@@ -157,7 +157,7 @@ app.on("ready", async () => {
 
             try {
                 // Inject session cookies
-                const cookies = await session.defaultSession.cookies.get({ domain: 'evilquest.net' });
+                const cookies = await session.defaultSession.cookies.get({ domain: url.hostname });
                 const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
                 if (isApi) {
@@ -167,8 +167,8 @@ app.on("ready", async () => {
 
                 const outHeaders = new Headers(request.headers);
                 if (cookieHeader) outHeaders.set('Cookie', cookieHeader);
-                outHeaders.set('Origin', 'https://evilquest.net');
-                outHeaders.set('Referer', 'https://evilquest.net/');
+                outHeaders.set('Origin', `https://${url.hostname}`);
+                outHeaders.set('Referer', `https://${url.hostname}/`);
                 
                 let outUa = outHeaders.get('User-Agent') || '';
                 if (outUa) {
@@ -196,7 +196,7 @@ app.on("ready", async () => {
                     const [name, ...rest] = parts[0].split('=');
                     if (isApi) console.log(`[Protocol] storing cookie: ${name.trim()}`);
                     const cookieDetails: Electron.CookiesSetDetails = {
-                        url: 'https://evilquest.net',
+                        url: `https://${url.hostname}`,
                         name: name.trim(),
                         value: rest.join('=').trim(),
                         httpOnly: parts.some(p => p.toLowerCase() === 'httponly'),
@@ -280,7 +280,7 @@ app.on("ready", async () => {
         const passHeaders = new Headers(request.headers);
         const currentReferer = passHeaders.get('Referer') || '';
         if (currentReferer.includes('__evillite__')) {
-            passHeaders.set('Referer', 'https://evilquest.net/');
+            passHeaders.set('Referer', 'https://memoriesofmagic.com/');
         }
         
         // Normalise to one consistent Google-Chrome identity (matches the JS fingerprint).
@@ -400,9 +400,9 @@ export async function createClientWindow() {
     });
 
     mainWindow.setMenu(null);
-    // Load via https:// so the page origin is genuinely https://evilquest.net
+    // Load via https:// so the page origin is genuinely https://memoriesofmagic.com
     // Our protocol.handle('https') intercepts /__evillite__/ and serves local files
-    mainWindow.loadURL('https://evilquest.net/__evillite__/client.html');
+    mainWindow.loadURL('https://memoriesofmagic.com/__evillite__/client.html');
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);
@@ -445,8 +445,8 @@ export async function createClientWindow() {
                 || details.requestHeaders['upgrade'] === 'websocket';
                 
             if (isWs) {
-                details.requestHeaders['Origin'] = 'https://evilquest.net';
-                details.requestHeaders['Referer'] = 'https://evilquest.net/';
+                details.requestHeaders['Origin'] = 'https://memoriesofmagic.com';
+                details.requestHeaders['Referer'] = 'https://memoriesofmagic.com/';
             }
 
             // Normalise to the SAME consistent Google-Chrome identity used by the

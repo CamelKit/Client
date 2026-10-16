@@ -31,7 +31,8 @@ export interface ClassInfo {
         kind: string
     }[];
     start : number,
-    end : number
+    end : number,
+    source?: string;
 }
 
 // Search criteria for mapping a class

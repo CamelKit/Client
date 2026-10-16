@@ -24,7 +24,7 @@ import { ModelIconCache } from '@evillite/core/src/utilities/modelIconCache';
  * the UI into collapsible NPCs / Stalls & Chests / Quest Rewards categories.
  */
 
-const ICON_BASE = 'https://evilquest.net/items/';
+const ICON_BASE = 'https://memoriesofmagic.com/items/';
 const DROP_MATCH_TILES = 2;     // ground item must spawn within this many tiles of the death
 const DROP_WINDOW_MS = 6000;    // …and within this long after the death
 const ENGAGED_TTL_MS = 15000;   // an NPC counts as "yours" if you targeted it within this window
@@ -343,9 +343,9 @@ export default class CollectionLogPlugin extends Plugin {
                 overflow: 'hidden'
             } as CSSStyleDeclaration);
         el.innerHTML = `
-          <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://evilquest.net/ui/parchment.png') #3a3026;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
+          <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://memoriesofmagic.com/ui/parchment.png') #3a3026;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
           <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:2px solid #231109;box-shadow:inset 0 1px 0 rgba(255,255,255,0.1);overflow:hidden;z-index:1">
-            <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://evilquest.net/ui/stone-dark.png') #2c241b;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
+            <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://memoriesofmagic.com/ui/stone-dark.png') #2c241b;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
             <b style="color:#ffd24a;text-shadow:1px 1px 0 #000;position:relative;z-index:1">📒 Collection Log</b>
             <button id="cl-close" style="position:relative;z-index:1;background:#5a2020;border:1px solid #1a1612;border-top-color:#a04040;border-left-color:#a04040;border-radius:2px;color:#e8e8e8;font-size:12px;font-weight:bold;cursor:pointer;padding:2px 7px;text-shadow:1px 1px 0 #000;box-shadow:inset 0 0 4px rgba(0,0,0,0.5)">X</button>
           </div>
@@ -359,7 +359,7 @@ export default class CollectionLogPlugin extends Plugin {
             <div id="cl-grid" style="flex:1;overflow:auto;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,48px);grid-auto-rows:48px;gap:8px;align-content:start"></div>
           </div>
           <div style="position:relative;padding:5px 12px;border-top:2px solid #231109;font-size:11px;overflow:hidden;z-index:1">
-            <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://evilquest.net/ui/stone-dark.png') #2c241b;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
+            <div style="position:absolute;top:-100vw;left:-100vw;right:-100vw;bottom:-100vw;background:url('https://memoriesofmagic.com/ui/stone-dark.png') #2c241b;transform:rotate(90deg);z-index:-1;pointer-events:none"></div>
             <div id="cl-foot" style="position:relative;z-index:1;color:#b3a890"></div>
           </div>`;
         document.body.appendChild(el);
