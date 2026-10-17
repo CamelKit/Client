@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     main: {
       plugins: [externalizeDepsPlugin()],
       define: {
-        // Baked at build time. Only TRUE in the canonical CamelC0re/Client CI build (set in
+        // Baked at build time. Only TRUE in the canonical CamelKit/Client CI build (set in
         // build.yml from github.repository). Fork/test builds get FALSE → the auto-updater stays
         // off so a build a dev is testing is never clobbered; canonical builds update from
         __CAMELKIT_CANONICAL__: JSON.stringify(process.env.CAMELKIT_CANONICAL === 'true' || process.env.EVILLITE_CANONICAL === 'true'),

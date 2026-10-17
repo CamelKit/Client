@@ -86,7 +86,7 @@ system — the mobile equivalent of the desktop remote-debugging port.
 So distribution splits the same way as the desktop updater (fork = test, canonical = shipped):
 - **Fork builds (`atapifire/EvilLite`)** → **debug APK** (debuggable, WebView inspectable) — for our
   own testing. `v*` tags on the fork still produce installable debug APKs.
-- **Canonical builds (`CamelC0re/Client`)** → **signed release APK** (`debuggable=false`) — WebView
+- **Canonical builds (`CamelKit/Client`)** → **signed release APK** (`debuggable=false`) — WebView
   debugging stays off. The CI build **fails** if the signing secrets are missing rather than shipping
   a debuggable APK (`build.yml`, keyed on `github.repository`).
 - `MainActivity` calls `setWebContentsDebuggingEnabled(FLAG_DEBUGGABLE)` — explicit and auditable, so

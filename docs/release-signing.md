@@ -6,7 +6,7 @@ for testing and need none of this.
 
 The canonical CI (`build.yml`, Android job) builds `assembleRelease` with **AGP injected signing**
 (`-Pandroid.injected.signing.*`), so the Capacitor-generated `build.gradle` is left untouched — it
-just needs a keystore + four secrets on the **`CamelC0re/Client`** repo.
+just needs a keystore + four secrets on the **`CamelKit/Client`** repo.
 
 ## One-time: create a release keystore
 
@@ -22,7 +22,7 @@ keytool -genkeypair -v \
 Keep `evillite-release.keystore` **private and backed up** — losing it means a new app identity
 (users must reinstall) and a new App Link fingerprint. Do **not** commit it.
 
-## Add the CI secrets (CamelC0re/Client → Settings → Secrets → Actions)
+## Add the CI secrets (CamelKit/Client → Settings → Secrets → Actions)
 
 | Secret | Value |
 |---|---|

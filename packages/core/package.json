@@ -11,13 +11,13 @@
     "definitions",
     "framework"
   ],
-  "homepage": "https://github.com/CamelC0re/Client#readme",
+  "homepage": "https://github.com/CamelKit/Client#readme",
   "bugs": {
-    "url": "https://github.com/CamelC0re/Client/issues"
+    "url": "https://github.com/CamelKit/Client/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CamelC0re/Client.git"
+    "url": "git+https://github.com/CamelKit/Client.git"
   },
   "license": "GPL-3.0-only",
   "author": "CamelKit Team",

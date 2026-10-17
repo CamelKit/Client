@@ -19,7 +19,7 @@ import * as path from 'path';
 import { settingsService } from '../../modules/settingsManagement';
 
 // Baked at build time by electron.vite.config.ts (define). TRUE only in the canonical
-// CamelC0re/Client CI build; FALSE in fork/test builds so they never auto-update.
+// CamelKit/Client CI build; FALSE in fork/test builds so they never auto-update.
 declare const __CAMELKIT_CANONICAL__: boolean;
 declare const __EVILLITE_CANONICAL__: boolean;
 
@@ -100,7 +100,7 @@ export async function createUpdateWindow() {
         } else if (!(typeof __CAMELKIT_CANONICAL__ !== 'undefined' ? __CAMELKIT_CANONICAL__ : __EVILLITE_CANONICAL__)) {
             // Fork / test build: never auto-update. Devs grab these to try a change before its PR
             // is finished — they must NOT be pulled to a canonical release and lose the build under
-            // test. Only canonical (CamelC0re/Client) CI builds check the feed. See build.yml.
+            // test. Only canonical (CamelKit/Client) CI builds check the feed. See build.yml.
             proceedToClient('non-canonical (fork/test) build — auto-update disabled');
         } else {
             // Safety net: if the check neither resolves nor errors (e.g. the feed

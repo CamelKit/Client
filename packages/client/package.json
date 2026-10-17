@@ -3,16 +3,16 @@
   "productName": "CamelKit",
   "version": "0.0.1",
   "description": "A RuneLite-esque Client for the game EvilQuest",
-  "homepage": "https://github.com/CamelC0re/Client#readme",
+  "homepage": "https://github.com/CamelKit/Client#readme",
   "engines": {
     "node": "^22.x.x"
   },
   "bugs": {
-    "url": "https://github.com/CamelC0re/Client/issues"
+    "url": "https://github.com/CamelKit/Client/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CamelC0re/Client.git"
+    "url": "git+https://github.com/CamelKit/Client.git"
   },
   "license": "GPL-3.0-only",
   "author": "CamelKit Team",
@@ -52,7 +52,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "CamelC0re",
+        "owner": "CamelKit",
         "repo": "Client"
       }
     ],

@@ -181,8 +181,8 @@ jobs:
 
       - name: Build client (renderer + main + copy plugin cache)
         env:
-          CAMELKIT_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
-          EVILLITE_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
+          CAMELKIT_CANONICAL: ${{ github.repository == 'CamelKit/Client' }}
+          EVILLITE_CANONICAL: ${{ github.repository == 'CamelKit/Client' }}
         run: pnpm --filter @camelkit/client build
 
       - name: Package (${{ matrix.platform }})
@@ -274,7 +274,7 @@ jobs:
       - name: Build APK (signed release if keystore available, debug fallback)
         working-directory: packages/mobile
         env:
-          IS_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
+          IS_CANONICAL: ${{ github.repository == 'CamelKit/Client' }}
           IS_PRERELEASE: ${{ needs.get_version.outputs.prerelease }}
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

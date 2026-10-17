@@ -72,7 +72,7 @@ The Plugin Hub serves as the central registry:
 ## Getting Started
 1. **Clone the repository**
    ```bash
-   git clone git@github.com:CamelC0re/Client.git
+   git clone git@github.com:CamelKit/Client.git
    cd Client
    ```
 
