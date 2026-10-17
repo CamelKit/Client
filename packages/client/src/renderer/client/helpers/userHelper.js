@@ -207,13 +207,13 @@ function setupUserHelper() {
                 deleteCredentialsButton.style.display = 'none'; // Hide the delete button when entering a new username
             }
 
-            setTitle('RyeLite'); // Update the title to indicate "Other" user
+            setTitle('CamelKit'); // Update the title to indicate "Other" user
         } else {
             // Otherwise, hide the original input and fill it with the selected username
             usernameInput.style.display = 'none';
             usernameInput.value = this.value;
 
-            setTitle(`RyeLite - ${this.value}`); // Update the title to indicate "Other" user
+            setTitle(`CamelKit - ${this.value}`); // Update the title to indicate "Other" user
             // IPC Request to get saved passwords for the selected username
             window.electron.ipcRenderer
                 .invoke('get-saved-password', this.value)
@@ -296,9 +296,9 @@ function setupUserHelper() {
             }
 
             if (selectedUsername === 'other' && usernameInput.value !== '') {
-                setTitle(`RyeLite - ${usernameInput.value}`);
+                setTitle(`CamelKit - ${usernameInput.value}`);
             } else {
-                setTitle(`RyeLite - ${selectedUsername}`);
+                setTitle(`CamelKit - ${selectedUsername}`);
             }
 
             // Look for 'id' hs-screen-mask to exist trigger once

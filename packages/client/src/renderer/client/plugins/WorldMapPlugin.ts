@@ -1,7 +1,7 @@
-import { Plugin } from '@evillite/core/src/interfaces/highlite/plugin/plugin.class';
-import { SettingsTypes, type PluginSettings } from '@evillite/core/src/interfaces/highlite/plugin/pluginSettings.interface';
-import { PluginAssetCache } from '@evillite/core/src/utilities/pluginAssetCache';
-import { ModelIconCache } from '@evillite/core/src/utilities/modelIconCache';
+import { Plugin } from '@camelkit/core/src/interfaces/highlite/plugin/plugin.class';
+import { SettingsTypes, type PluginSettings } from '@camelkit/core/src/interfaces/highlite/plugin/pluginSettings.interface';
+import { PluginAssetCache } from '@camelkit/core/src/utilities/pluginAssetCache';
+import { ModelIconCache } from '@camelkit/core/src/utilities/modelIconCache';
 
 /**
  * World Map plugin for EvilQuest.
@@ -1752,7 +1752,7 @@ export default class WorldMapPlugin extends Plugin {
     /** Mobile (Capacitor WebView) has no detached OS window — the map is overlay-only there.
      *  Set by the mobile shell (window.EvilLiteMobile); also reflected in electron.process.platform. */
     private get isMobile(): boolean {
-        return !!(window as any).EvilLiteMobile || (window as any).electron?.process?.platform === 'android' || (window as any).electron?.process?.platform === 'ios';
+        return !!(window as any).CamelKitMobile || !!(window as any).EvilLiteMobile || (window as any).electron?.process?.platform === 'android' || (window as any).electron?.process?.platform === 'ios';
     }
 
     /** Entry point (sidebar icon / M-key): toggle the map — open in the user's mode, or close
@@ -2163,7 +2163,7 @@ export default class WorldMapPlugin extends Plugin {
         // The window is a file:// page (cross-origin to evilquest.net), so it can't rotate the
         // stone tile itself — use the pre-baked rotated data URL, falling back to the raw tile.
         const bg = this.stoneTexBaked || 'https://memoriesofmagic.com/ui/stone-dark.png';
-        return `<!doctype html><html><head><meta charset="utf-8"><title>EvilLite — World Map</title><style>
+        return `<!doctype html><html><head><meta charset="utf-8"><title>CamelKit — World Map</title><style>
 html,body{margin:0;height:100%;background:#101012;color:#e8e8e8;font:13px/1.4 Inter,system-ui,sans-serif;overflow:hidden;user-select:none}
 #app{display:flex;flex-direction:column;height:100vh}
 #hdr{display:flex;align-items:center;gap:8px;padding:6px 8px;background:linear-gradient(rgba(15,12,10,.35),rgba(15,12,10,.5)),url("${bg}");border-bottom:1px solid #333}

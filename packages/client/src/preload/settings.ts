@@ -132,13 +132,13 @@ export class settingsSchema extends SettingsSchema {
                 {
                     label: "Enable Plugins",
                     type: SettingTypes.BOOLEAN,
-                    description: "Allow the use of plugins in Ryelite.",
+                    description: "Allow the use of plugins in CamelKit.",
                     default: true
                 } as Field,
                 {
                     label: "Allow Beta Plugins",
                     type: SettingTypes.BOOLEAN,
-                    description: "Allow the use of beta plugins in Ryelite.",
+                    description: "Allow the use of beta plugins in CamelKit.",
                     default: false
                 } as Field
             ]

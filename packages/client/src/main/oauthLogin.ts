@@ -43,11 +43,18 @@ const REVOKE = `${BASE}/oauth/revoke`;
 const SCOPE = 'game';
 
 function clientId(): string {
-    return process.env.EVILLITE_OAUTH_CLIENT || (app.isPackaged ? 'evillite' : 'evillite-dev');
+    return process.env.CAMELKIT_OAUTH_CLIENT || process.env.EVILLITE_OAUTH_CLIENT || (app.isPackaged ? 'evillite' : 'evillite-dev');
 }
 
 function storeFile(): string {
-    return path.join(app.getPath('userData'), 'evillite-oauth.json');
+    const newPath = path.join(app.getPath('userData'), 'camelkit-oauth.json');
+    const oldPath = path.join(app.getPath('userData'), 'evillite-oauth.json');
+    if (!fs.existsSync(newPath) && fs.existsSync(oldPath)) {
+        try {
+            fs.copyFileSync(oldPath, newPath);
+        } catch {}
+    }
+    return newPath;
 }
 
 // ─── Persistent store: device_id (UUID v4, stable) + rotating refresh token ─────
@@ -206,7 +213,7 @@ function runAuthorizationFlow(): Promise<TokenResult> {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(
                 `<!doctype html><meta charset=utf-8><body style="font:16px system-ui;background:#111;color:#eee;text-align:center;padding-top:18vh">` +
-                `<h2 style="color:#b33">EvilLite</h2><p>${err ? 'Login failed: ' + err : 'Login complete — you can close this tab and return to EvilLite.'}</p></body>`,
+                `<h2 style="color:#b33">CamelKit</h2><p>${err ? 'Login failed: ' + err : 'Login complete — you can close this tab and return to CamelKit.'}</p></body>`,
             );
             if (err) return finish(() => reject(new Error('authorize error: ' + err)));
             if (!code) return finish(() => reject(new Error('no authorization code in callback')));

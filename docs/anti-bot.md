@@ -1,12 +1,12 @@
-# EvilLite anti-bot policy
+# CamelKit anti-bot policy
 
-EvilLite is a mod client for EvilQuest. **It must never be — or become — a tool for botting EvilQuest.**
+CamelKit is a mod client for EvilQuest. **It must never be — or become — a tool for botting EvilQuest.**
 This document is the policy for the client and plugins, the reasoning behind it, and the review
 checklist for the Plugin Hub.
 
 ## The one principle
 
-**Every action in the game must originate from a real, in-the-moment user input. EvilLite never
+**Every action in the game must originate from a real, in-the-moment user input. CamelKit never
 fabricates input and never weakens EvilQuest's server-side anti-bot.**
 
 ## Why this is enough (and where the real protection lives)
@@ -70,7 +70,7 @@ enforcement** (EvilQuest) + **no client bypasses** (this policy + the CI guard) 
 
 ## The honest limit
 
-EvilLite is open source; a hostile fork can strip anything we add. We cannot technically stop that.
+CamelKit is open source; a hostile fork can strip anything we add. We cannot technically stop that.
 What we guarantee is that the **official client and ecosystem ship zero automation capability and
 never weaken EvilQuest's defenses.** A fork that adds botting is on the botter — and is still caught
 by the server-side ticket system. We compete on *not being the easy on-ramp*, and we cooperate with

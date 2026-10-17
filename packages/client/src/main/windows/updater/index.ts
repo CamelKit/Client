@@ -20,6 +20,7 @@ import { settingsService } from '../../modules/settingsManagement';
 
 // Baked at build time by electron.vite.config.ts (define). TRUE only in the canonical
 // CamelC0re/Client CI build; FALSE in fork/test builds so they never auto-update.
+declare const __CAMELKIT_CANONICAL__: boolean;
 declare const __EVILLITE_CANONICAL__: boolean;
 
 async function configureAutoUpdater(autoUpdater: any) {
@@ -55,7 +56,7 @@ export async function createUpdateWindow() {
     }
 
     const updateWindow = new BrowserWindow({
-        title: 'Updating EvilLite...',
+        title: 'Updating CamelKit...',
         webPreferences: {
             preload: path.join(__dirname, '../preload/index.js'),
             sandbox: false, // Disable sandboxing for compatibility with some libraries
@@ -96,7 +97,7 @@ export async function createUpdateWindow() {
     updateWindow.on('ready-to-show', async () => {
         if (!app.isPackaged || !autoUpdater) {
             ipcMain.emit('delay-update');
-        } else if (!__EVILLITE_CANONICAL__) {
+        } else if (!(typeof __CAMELKIT_CANONICAL__ !== 'undefined' ? __CAMELKIT_CANONICAL__ : __EVILLITE_CANONICAL__)) {
             // Fork / test build: never auto-update. Devs grab these to try a change before its PR
             // is finished — they must NOT be pulled to a canonical release and lose the build under
             // test. Only canonical (CamelC0re/Client) CI builds check the feed. See build.yml.

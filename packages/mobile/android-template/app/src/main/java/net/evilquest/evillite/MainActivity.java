@@ -16,7 +16,7 @@ import com.getcapacitor.BridgeActivity;
  * the WebView straight to the EvilLite entry URL.
  */
 public class MainActivity extends BridgeActivity {
-    static final String ENTRY_URL = "https://evilquest.net/__evillite__/client.html";
+    static final String ENTRY_URL = "https://evilquest.net/__camelkit__/client.html";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,10 +49,12 @@ public class MainActivity extends BridgeActivity {
         // false positives. Login itself runs in the system browser, so reCAPTCHA sees real Chrome.
 
         // Native OAuth (RFC 8252 loopback + system browser). The injected ELECTRON_SHIM routes
-        // window.electron.ipcRenderer's oauth:* channels to this `EvilLiteNative` object.
-        webView.addJavascriptInterface(new OAuthBridge(this, webView), "EvilLiteNative");
+        // window.electron.ipcRenderer's oauth:* channels to this native object.
+        OAuthBridge oauthBridge = new OAuthBridge(this, webView);
+        webView.addJavascriptInterface(oauthBridge, "CamelKitNative");
+        webView.addJavascriptInterface(oauthBridge, "EvilLiteNative");
 
-        // Take over resource loading: serve /__evillite__/* from assets + rewrite game JS.
+        // Take over resource loading: serve /__camelkit__/* or /__evillite__/* from assets + rewrite game JS.
         webView.setWebViewClient(new EvilLiteWebViewClient(this.bridge));
 
         // Same entry point as desktop: a local page under the real origin.

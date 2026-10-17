@@ -29,6 +29,7 @@ import log from 'electron-log';
 function buildBrowserIdentity(nativeUa: string): { ua: string; secChUa: string; platform: string; major: string } {
     const ua = (nativeUa || '')
         .replace(/Electron\/[0-9.]+\s?/g, '')
+        .replace(/CamelKit\/[0-9.]+\s?/gi, '')
         .replace(/EvilLite\/[0-9.]+\s?/gi, '')
         .trim();
     const major = ua.match(/Chrome\/(\d+)/)?.[1] ?? '138';
@@ -100,8 +101,9 @@ app.on("ready", async () => {
         // renderer from disk. Using app.isPackaged here was the bug: preview is unpackaged but
         // has no Vite dev server, so it proxied to a dead localhost:5173 (ERR_CONNECTION_REFUSED).
         const devRendererUrl = process.env['ELECTRON_RENDERER_URL'];
-        if ((url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') && url.pathname.startsWith('/__evillite__/')) {
-            const filePart = url.pathname.replace('/__evillite__/', '');
+        const isInternalAsset = url.pathname.startsWith('/__camelkit__/') || url.pathname.startsWith('/__evillite__/');
+        if ((url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') && isInternalAsset) {
+            const filePart = url.pathname.replace(/^\/__(camelkit|evillite)__\//, '');
             if (devRendererUrl) {
                 // Dev: proxy to Vite (TypeScript transforms + HMR)
                 try {
@@ -119,7 +121,7 @@ app.on("ready", async () => {
                     headers: { 'Content-Type': localMimeType(localPath), 'Access-Control-Allow-Origin': '*' }
                 });
             } catch {
-                return new Response('EvilLite asset not found: ' + filePart, { status: 404 });
+                return new Response('CamelKit asset not found: ' + filePart, { status: 404 });
             }
         }
 
@@ -173,7 +175,7 @@ app.on("ready", async () => {
                 
                 let outUa = outHeaders.get('User-Agent') || '';
                 if (outUa) {
-                    outUa = outUa.replace(/Electron\/[0-9\.]+\s?/g, '').replace(/EvilLite\/[0-9\.]+\s?/g, '').trim();
+                    outUa = outUa.replace(/Electron\/[0-9\.]+\s?/g, '').replace(/CamelKit\/[0-9\.]+\s?/gi, '').replace(/EvilLite\/[0-9\.]+\s?/gi, '').trim();
                     outHeaders.set('User-Agent', outUa);
                 }
 
@@ -297,7 +299,7 @@ app.on("ready", async () => {
         // ── 3. Pass through all other HTTPS requests (Google, CDNs, etc.) ────
         const passHeaders = new Headers(request.headers);
         const currentReferer = passHeaders.get('Referer') || '';
-        if (currentReferer.includes('__evillite__')) {
+        if (currentReferer.includes('__camelkit__') || currentReferer.includes('__evillite__')) {
             passHeaders.set('Referer', 'https://memoriesofmagic.com/');
         }
         
@@ -419,8 +421,8 @@ export async function createClientWindow() {
 
     mainWindow.setMenu(null);
     // Load via https:// so the page origin is genuinely https://memoriesofmagic.com
-    // Our protocol.handle('https') intercepts /__evillite__/ and serves local files
-    mainWindow.loadURL('https://memoriesofmagic.com/__evillite__/client.html');
+    // Our protocol.handle('https') intercepts /__camelkit__/ (and legacy /__evillite__/) and serves local files
+    mainWindow.loadURL('https://memoriesofmagic.com/__camelkit__/client.html');
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);

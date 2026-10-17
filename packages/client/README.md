@@ -6,38 +6,31 @@
   <img alt="Downloads" src="https://img.shields.io/github/downloads/Highl1te/HighliteDesktop/latest/total?label=Downloads&color=blue">
 </p>
 
-# RyeLite
+# CamelKit
 
-RyeLite is an open-source game client for High Spell, forked from HighLite. RyeLite is aimed to be a continuation of HighLite, as HL is no longer updated.
+CamelKit is an open-source game client for High Spell, forked from HighLite.
 
-# Installing RyeLite
-RyeLite is packaged as an Electron application and provides [Linux](#Linux), [MacOS](#MacOS), and [Windows](#Windows) support.
+# Installing CamelKit
+CamelKit is packaged as an Electron application and provides [Linux](#Linux), [MacOS](#MacOS), and [Windows](#Windows) support.
 
 ## Windows
-1. Obtain the .exe file from the [latest release](https://github.com/ash-of-the-meadow/RyeliteDesktop/releases/latest)
+1. Obtain the .exe file from the releases page
 > [!WARNING]
-> In Microsoft Edge, you may recieve a download warning due to RyeLite not being commonly downloaded.
->
-> ![image](https://github.com/user-attachments/assets/8dd15f93-29c4-42a8-966b-1bd8a83fa66c)
+> In Microsoft Edge, you may receive a download warning due to CamelKit not being commonly downloaded.
 >
 > You can typically resolve this by clicking '...' and selecting 'Keep'
 
 
 > [!WARNING]
-> RyeLite is currently un-signed due to the inherent cost of obtaining signing certificates for software. This results in install and download warnings.
-> If we recieve enough players (or complaints!) we will invest in obtaining certificates.
->
-> ![image](https://github.com/user-attachments/assets/90651443-a7ed-42b1-8e60-60af2a54fbf1)
+> CamelKit is currently un-signed due to the inherent cost of obtaining signing certificates for software. This results in install and download warnings.
+> If we receive enough players (or complaints!) we will invest in obtaining certificates.
 >
 > You can resolve this by clicking 'More Info' and pressing 'Run anyway'
->
-> ![image](https://github.com/user-attachments/assets/f1537d49-7aac-4344-ba6a-77a01339e63f)
->
 
-3. Install RyeLite
+3. Install CamelKit
 4. You will be prompted by the game client when launching to automatically install any future updates!
 ## Linux
-1. Obtain the .AppImage file from the [latest release](https://github.com/ash-of-the-meadow/RyeliteDesktop/releases/latest)
+1. Obtain the .AppImage file from the releases page
 2. Execute the AppImage
 3. You will be prompted by the game client when launching to automatically install any future updates!
 ## MacOS
@@ -47,9 +40,9 @@ RyeLite is packaged as an Electron application and provides [Linux](#Linux), [Ma
 1. Instructions Pending
 
 # Related Repositories
-The RyeLite ecosystem is distributed across multiple repositories, each serving a specific purpose in the overall architecture.
+The CamelKit ecosystem is distributed across multiple repositories, each serving a specific purpose in the overall architecture.
 
-### [Desktop Application](https://github.com/ash-of-the-meadow/RyeliteDesktop)
+### Desktop Application
 This repository! The desktop application handles:
 - Electron-based desktop application mechanics
 - Window management and user interface
@@ -57,17 +50,16 @@ This repository! The desktop application handles:
 - Auto-updater functionality
 - Cross-platform builds (Windows, Linux, macOS)
 
-### [Core](https://github.com/ash-of-the-meadow/rl-core)
-The core repository provides two APIs for interacting with the High Spell game code:
-- **@highlite/plugin-api** - Deprecated API - TypeScript type definitions for plugin development - Older api to support current plugins. Support is maintained, but new plugins and code should use ryelite-core.
-- **@ryelite/core** - TypeScript type definitions for plugin development - Current up-to-date api that newer code and plugins should use, unless a feature is only available in the older api.
-Both APIs support:
+### Core
+The core repository provides the API for interacting with the High Spell game code:
+- **@camelkit/core** - TypeScript type definitions and hook managers for plugin development. (Maintains backwards compatibility for `@evillite/core` and `@ryelite/core`).
+Supports:
 - Game state monitoring and interaction APIs
 - High Spell game client integration layer
 - Plugin development framework and utilities
 - Shared interfaces for game data access
 
-### [Plugin Hub](https://github.com/ash-of-the-meadow/rl-plugin-hub)
+### Plugin Hub
 The Plugin Hub serves as the central registry:
 - Verified plugin configurations
 - Plugin version management
@@ -75,48 +67,35 @@ The Plugin Hub serves as the central registry:
 # Development
 ## Prerequisites
 - **Node.js v22 LTS** - [Download here](https://nodejs.org/en/download)
-- **Yarn v4** - Managed via Corepack (comes with Node.js)
+- **pnpm** or **Yarn v4**
 
 ## Getting Started
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/ash-of-the-meadow/RyeliteDesktop.git
-   cd RyeliteDesktop
+   git clone git@github.com:CamelC0re/Client.git
+   cd Client
    ```
 
 2. **Install dependencies**
    ```bash
-   yarn install
+   pnpm install
    ```
 ## Development Commands
 ### Development Mode
 ```bash
-yarn dev          # Start development server with hot reload
-yarn start        # Preview built application without packaging
+pnpm --filter @camelkit/client dev          # Start development server with hot reload
+pnpm --filter @camelkit/client start        # Preview built application without packaging
 ```
 
 ### Building
 ```bash
-yarn build        # Build the application for production (automatically runs prebuild)
-yarn build:unpack # Build and create unpacked directory
-```
-
-### Platform-Specific Builds
-```bash
-yarn build:win    # Build Windows installer (.exe)
-yarn build:mac    # Build macOS application (.dmg)
-yarn build:linux  # Build Linux AppImage
+pnpm --filter @camelkit/client build        # Build the application for production
 ```
 
 ### Test the built client (local)
-CI lives on the canonical repo and only runs on a PR/tag, so build + test packaged builds locally:
 ```bash
-yarn sync:plugin  # Pull the World Map plugin + prebaked cache into the tree (mirrors CI)
-yarn try          # Build the packaged app (unpacked) and launch it — fastest "built client" test
-yarn dist         # Build a full installer for your OS (.deb/.exe/.dmg) into dist/
+pnpm --filter @camelkit/client try          # Build the packaged app (unpacked) and launch it
 ```
-`yarn try` / `yarn dist` auto-sync the plugin first. See **[RELEASING.md](../../RELEASING.md)** for the
-branch model (dev/main), release channels (beta → Beta, clean tag → Stable), and how to cut a release.
 
 ### Code Quality
 ```bash

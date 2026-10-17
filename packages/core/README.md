@@ -1,21 +1,21 @@
-# @ryelite/core 
+# @camelkit/core 
 
-This project/package provides two things in one. A plugin-type api to use during development as well as the core runtime used by RyeLite compatible clients.
+This project/package provides two things in one. A plugin-type api to use during development as well as the core runtime used by CamelKit compatible clients.
 
 ## Installation
 
 ```bash
-npm install @ryelite/core
+npm install @camelkit/core
 -or-
-yarn add @ryelite/core
+yarn add @camelkit/core
 ```
 
 ## Usage
 
-This package provides TypeScript type definitions for developing Ryelite plugins. Import the types you need:
+This package provides TypeScript type definitions for developing CamelKit plugins. Import the types you need:
 
 ```typescript
-import { Plugin, IHighlite, PluginSettings } from '@ryelite/core';
+import { Plugin, IHighlite, PluginSettings } from '@camelkit/core';
 
 export class MyPlugin extends Plugin {
     pluginName = 'MyAwesomePlugin';
@@ -46,7 +46,7 @@ export class MyPlugin extends Plugin {
 
 - `NotificationManager` - In-game notifications
 - `ItemTooltip` - Generic Tooltip Manager
-- `UIManager` - Ryelite Centric way of creating on-screen UI Elements
+- `UIManager` - CamelKit Centric way of creating on-screen UI Elements
 - `PanelManager` - UI panel management
 - `SettingsManager` - Plugin settings management
 - `DatabaseManager` - Data persistence

@@ -34,7 +34,7 @@ export default function registerScreenshotIPC() {
             const result = await captureFocusedWindow();
             if (!result) return { ok: false, error: 'No window' };
 
-            const name = `Ryelite_Screenshot_${timestamp()}.png`;
+            const name = `CamelKit_Screenshot_${timestamp()}.png`;
             const filePath = path.join(dir, name);
             await fs.promises.writeFile(filePath, result.buffer);
             return { ok: true, path: filePath };

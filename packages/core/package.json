@@ -1,26 +1,26 @@
 {
-  "name": "@evillite/core",
+  "name": "@camelkit/core",
   "version": "0.1.2",
-  "description": "EvilLite Client Core",
+  "description": "CamelKit Client Core",
   "keywords": [
-    "highlite",
-    "ryelite",
+    "camelkit",
+    "evilquest",
     "plugin",
     "typescript",
     "types",
     "definitions",
     "framework"
   ],
-  "homepage": "https://github.com/ash-of-the-meadow/rl-core#readme",
+  "homepage": "https://github.com/CamelC0re/Client#readme",
   "bugs": {
-    "url": "https://github.com/ash-of-the-meadow/rl-core/issues"
+    "url": "https://github.com/CamelC0re/Client/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ash-of-the-meadow/rl-core.git"
+    "url": "git+https://github.com/CamelC0re/Client.git"
   },
   "license": "GPL-3.0-only",
-  "author": "ryelite",
+  "author": "CamelKit Team",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

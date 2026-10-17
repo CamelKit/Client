@@ -194,7 +194,7 @@ public class OAuthBridge {
             }
         }
         String html = "<!doctype html><meta charset=utf-8><body style=\"font:16px system-ui;background:#111;color:#eee;text-align:center;padding-top:18vh\">"
-            + "<h2 style=\"color:#b33\">EvilLite</h2><p>" + (isCb ? "Login complete — return to the EvilLite app." : "Not found") + "</p></body>";
+            + "<h2 style=\"color:#b33\">CamelKit</h2><p>" + (isCb ? "Login complete — return to the CamelKit app." : "Not found") + "</p></body>";
         OutputStream out = sock.getOutputStream();
         String status = isCb ? "200 OK" : "404 Not Found";
         out.write(("HTTP/1.1 " + status + "\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n" + html)

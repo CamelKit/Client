@@ -1,7 +1,7 @@
 <p><img src="https://github.com/user-attachments/assets/da5bb809-3949-4854-99e4-1619022444e7" width="128"/></p>
 
-# Ryelite
-Ryelite is an open-source game client for High Spell. Currently pending official permission to operate from the game developer (Dew). Highlite, which this client is forked from, has received said permission.
+# CamelKit
+CamelKit is an open-source game client for EvilQuest.
 
 ---
 

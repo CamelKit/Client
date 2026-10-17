@@ -276,7 +276,7 @@ async function runDevLogin(): Promise<DevLoginResult> {
     if (!chrome) return { ok: false, error: 'Google Chrome not found (looked in: ' + CHROME_CANDIDATES.join(', ') + ')' };
 
     const port = 9333;
-    activeProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'evillite-devlogin-'));
+    activeProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'camelkit-devlogin-'));
 
     console.log('[DevLogin] launching Chrome for browser login…');
     activeChrome = spawn(chrome, [

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Anti-bot guard — fails the build if the source contains an input-fabrication / trusted-input
 // bypass that would help bot EvilQuest. EvilQuest enforces anti-bot server-side (commands need an
-// inputSeq minted by a TRUSTED browser input event); this keeps EvilLite from ever shipping a way
+// inputSeq minted by a TRUSTED browser input event); this keeps CamelKit from ever shipping a way
 // around it. See docs/anti-bot.md. Pure Node, no deps, so it runs in CI without install.
 //
 // Allowlisting a genuinely-benign line: append a trailing comment `anti-bot:allow <reason>`.

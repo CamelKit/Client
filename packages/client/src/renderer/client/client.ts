@@ -13,9 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { Highlite } from '@evillite/core'
-import { Reflector } from '@evillite/core'
-import { HighliteResources } from '@evillite/core';
+import { Highlite } from '@camelkit/core';
+import { Reflector } from '@camelkit/core';
+import { HighliteResources } from '@camelkit/core';
 import '@iconify/iconify';
 import '@static/css/index.css';
 import '@static/css/overrides.css';
@@ -141,12 +141,12 @@ try {
         localStorage.setItem('evilquest_token', auto.token);
         localStorage.setItem('evilquest_username', auto.username || '');
         localStorage.setItem('evilquest_saved_username', auto.username || '');
-        console.log('[EvilLite] OAuth silent login ok (' + (auto.clientId || '') + ')');
+        console.log('[CamelKit] OAuth silent login ok (' + (auto.clientId || '') + ')');
     } else {
-        console.log('[EvilLite] OAuth auto-login: ' + (auto?.reason || 'no session'));
+        console.log('[CamelKit] OAuth auto-login: ' + (auto?.reason || 'no session'));
     }
 } catch (e) {
-    console.warn('[EvilLite] OAuth auto-login error', e);
+    console.warn('[CamelKit] OAuth auto-login error', e);
 }
 
 // OAuth activity heartbeat: while the user is logged in + in-world, ping the main process
@@ -165,7 +165,7 @@ setInterval(async () => {
             const r = await window.electron.ipcRenderer.invoke('oauth:ensure-fresh');
             if (r?.refreshed && r.token) {
                 localStorage.setItem('evilquest_token', r.token);
-                console.log('[EvilLite] OAuth token refreshed (session extended)');
+                console.log('[CamelKit] OAuth token refreshed (session extended)');
             }
         }
     } catch { /* ignore */ }
@@ -174,7 +174,7 @@ setInterval(async () => {
 async function obtainGameClient() {
     // For EvilQuest, the game scripts like babylon-core.js and GameManager.js are loaded
     // dynamically. We will need to set up interception for these scripts to apply Reflector hooks.
-    console.log('[EvilLite] Preparing game client interception...');
+    console.log('[CamelKit] Preparing game client interception...');
     
     // Parse the game source and bind hooks — exactly once, after all modules
     // have loaded. The game ships several minified ESM bundles that load in
@@ -188,7 +188,7 @@ async function obtainGameClient() {
             ?? ((window as any).__eqSourceCode ? [(window as any).__eqSourceCode] : []);
         if (!eqModules.length) return;
         (window as any).__eqIsParsing = true;
-        console.log('[EvilLite] Reflector parsing', eqModules.length, 'module(s)...');
+        console.log('[CamelKit] Reflector parsing', eqModules.length, 'module(s)...');
         // Run in the background — its IndexedDB saveHooks() call can stall.
         Reflector.loadHooksFromModules(eqModules).then(() => {
             const hm = (document as any).highlite?.managers?.HookManager;
@@ -199,13 +199,13 @@ async function obtainGameClient() {
                 Reflector.bindEnumHooks(hm);
             }
             const bound = Object.keys((document as any).highlite?.gameHooks || {});
-            console.log('[EvilLite] Reflector bound:', bound.join(',') || '(none)');
+            console.log('[CamelKit] Reflector bound:', bound.join(',') || '(none)');
             // Only consider hooks "done" once GameManager (the critical one) is bound.
             // EvilQuest can chunk-load the GameManager bundle AFTER the first settle, so
             // if it's missing we leave this open and the poller re-parses with more modules.
             if (bound.includes('GameManager')) (window as any).__eqHooksBound = true;
         }).catch(e => {
-            console.warn('[EvilLite] Reflector threw an error (ignoring):', e);
+            console.warn('[CamelKit] Reflector threw an error (ignoring):', e);
         }).finally(() => {
             (window as any).__eqIsParsing = false;
         });
@@ -239,14 +239,14 @@ async function obtainGameClient() {
 
         (window as any).__eqPluginsStarting = true;
         try {
-            console.log('[EvilLite] Login-ready (' + username + ') — starting core + plugins...');
+            console.log('[CamelKit] Login-ready (' + username + ') — starting core + plugins...');
             // start() (DB init + plugin-hub bar icon) is NOT idempotent — only once.
             if (!coreStarted) { await hi.start(); coreStarted = true; }
             await hi.startHook('login');  // settings + plugin.data + initAll/postInitAll/startAll
             (window as any).highliteInstanceStarted = true;
-            console.log('[EvilLite] Plugins started for ' + username);
+            console.log('[CamelKit] Plugins started for ' + username);
         } catch (e) {
-            console.warn('[EvilLite] Plugin start failed:', e);
+            console.warn('[CamelKit] Plugin start failed:', e);
             (window as any).__eqPluginsStarting = false; // allow a later retry
         }
     };
@@ -275,7 +275,7 @@ async function obtainGameClient() {
             stableTicks++;
             if (stableTicks >= 3 && !(window as any).__eqHooksBound && gmReady && count > lastParsedCount) {
                 lastParsedCount = count;
-                console.log('[EvilLite] Parsing at', count, 'modules (GameManager source present)...');
+                console.log('[CamelKit] Parsing at', count, 'modules (GameManager source present)...');
                 runReflectorParse();
             }
         } else {
@@ -350,7 +350,7 @@ Array.from(doc.body.children).forEach(child => {
 
 // Process and inject scripts manually
 const scripts = doc.querySelectorAll('script');
-console.log(`[EvilLite] Found ${scripts.length} scripts in /play HTML`);
+console.log(`[CamelKit] Found ${scripts.length} scripts in /play HTML`);
 scripts.forEach(script => {
     const newScript = document.createElement('script');
     Array.from(script.attributes).forEach(attr => {
@@ -383,7 +383,7 @@ scripts.forEach(script => {
         }
     }
 });
-console.log('[EvilLite] Script injection complete');
+console.log('[CamelKit] Script injection complete');
 
 /* Find DOM elements with the attribute to= */
 const toElements = document.querySelectorAll('[to]');
@@ -452,7 +452,7 @@ if (await window.settings.getByName('Enable Plugins')) {
     let highlite = new Highlite();
 
     // Load and register all plugins using dynamic imports
-    console.log('[EvilLite] Loading plugins...');
+    console.log('[CamelKit] Loading plugins...');
     const loadedPlugins: Array<{ class: any; name: string; }> = [];
 
     try {
@@ -471,14 +471,14 @@ if (await window.settings.getByName('Enable Plugins')) {
                         name: pluginName,
                     });
                 } else {
-                    console.error(`[EvilLite] Plugin class not found in module: ${pluginName}`);
+                    console.error(`[CamelKit] Plugin class not found in module: ${pluginName}`);
                 }
             } catch (error) {
-                console.error(`[EvilLite] Failed to load plugin from ${path}:`, error);
+                console.error(`[CamelKit] Failed to load plugin from ${path}:`, error);
             }
         }
     } catch (error) {
-        console.error('[EvilLite] Error loading plugins:', error);
+        console.error('[CamelKit] Error loading plugins:', error);
     }
     
     (window as any).highliteInstance = highlite;
@@ -523,10 +523,10 @@ setupGameResizeObserver();
 
 // Lightweight on-screen toast for dev-login status (no copy-paste UI needed).
 function devToast(msg: string, kind: 'info' | 'ok' | 'err' = 'info') {
-    let el = document.getElementById('evillite-dev-toast');
+    let el = document.getElementById('camelkit-dev-toast');
     if (!el) {
         el = document.createElement('div');
-        el.id = 'evillite-dev-toast';
+        el.id = 'camelkit-dev-toast';
         el.style.cssText = [
             'position:fixed', 'bottom:16px', 'right:16px', 'z-index:2147483647',
             'padding:10px 14px', 'border-radius:8px', 'font:13px/1.4 system-ui,sans-serif',
@@ -551,7 +551,7 @@ async function oauthLogin() {
             localStorage.setItem('evilquest_username', r.username || '');
             localStorage.setItem('evilquest_saved_username', r.username || '');
             devToast('Logged in as ' + (r.username || '?') + ' — loading game…', 'ok');
-            document.getElementById('evillite-oauth-authorize')?.remove();
+            document.getElementById('camelkit-oauth-authorize')?.remove();
             window.location.reload();
         } else {
             devToast('OAuth login failed: ' + (r?.error || 'unknown error'), 'err');
@@ -568,7 +568,7 @@ async function oauthLogin() {
 function setupOAuthLoginScreen() {
     const transform = () => {
         const card = document.querySelector('.eq-login-card');
-        if (!card || card.querySelector('#evillite-oauth-authorize')) return;
+        if (!card || card.querySelector('#camelkit-oauth-authorize')) return;
 
         // Hide the native login controls.
         card.querySelectorAll('.eq-login-field, .eq-login-remember, .eq-login-tabs, .eq-login-recaptcha-notice, .eq-login-error')
@@ -579,7 +579,7 @@ function setupOAuthLoginScreen() {
             // Reuse the native submit button (keeps the exact menu style); clone to strip
             // its form-submit handler, retitle, and wire OAuth.
             const ours = submit.cloneNode(true) as HTMLElement;
-            ours.id = 'evillite-oauth-authorize';
+            ours.id = 'camelkit-oauth-authorize';
             ours.setAttribute('type', 'button');
             ours.textContent = 'Authorize EvilQuest Login';
             (ours as any).disabled = false;
@@ -589,7 +589,7 @@ function setupOAuthLoginScreen() {
         } else {
             // Fallback if the submit button isn't found: a plain styled button.
             const btn = document.createElement('button');
-            btn.id = 'evillite-oauth-authorize';
+            btn.id = 'camelkit-oauth-authorize';
             btn.className = 'eq-login-submit';
             btn.type = 'button';
             btn.textContent = 'Authorize EvilQuest Login';
@@ -618,7 +618,7 @@ window.addEventListener('keydown', (e) => {
     // 1. Session Reset Hotkey: Ctrl+Shift+R
     if (e.ctrlKey && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
         e.preventDefault();
-        console.log('[EvilLite] Triggering reCAPTCHA session reset...');
+        console.log('[CamelKit] Triggering reCAPTCHA session reset...');
         window.electron.ipcRenderer.invoke('reset-captcha-session').then(() => {
             window.location.reload();
         });

@@ -1,5 +1,5 @@
 # Source this before any Android build command:  source packages/mobile/android-env.sh
-# Sets the home-dir JDK 17 + Android SDK installed for the EvilLite mobile build
+# Sets the home-dir JDK 17 + Android SDK installed for the CamelKit mobile build
 # (no system packages / sudo needed).
 export JAVA_HOME="$(ls -d "$HOME"/opt/jdk-17* 2>/dev/null | head -1)"
 export ANDROID_HOME="$HOME/Android/Sdk"

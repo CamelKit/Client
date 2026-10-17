@@ -1,21 +1,21 @@
 {
-  "name": "@evillite/client",
-  "productName": "EvilLite",
+  "name": "@camelkit/client",
+  "productName": "CamelKit",
   "version": "0.2.0-beta.17",
   "description": "A RuneLite-esque Client for the game EvilQuest",
-  "homepage": "https://github.com/RyeL1te/Core#readme",
+  "homepage": "https://github.com/CamelC0re/Client#readme",
   "engines": {
     "node": "^22.x.x"
   },
   "bugs": {
-    "url": "https://github.com/RyeL1te/Core/issues"
+    "url": "https://github.com/CamelC0re/Client/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RyeL1te/RyeliteDesktop.git"
+    "url": "git+https://github.com/CamelC0re/Client.git"
   },
   "license": "GPL-3.0-only",
-  "author": "Ryelite Team",
+  "author": "CamelKit Team",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "NO_SANDBOX=1 electron-vite dev",
@@ -35,8 +35,8 @@
     "release": "electron-builder"
   },
   "build": {
-    "appId": "net.evilquest.evillite",
-    "copyright": "Copyright © 2025 EvilLite",
+    "appId": "net.evilquest.camelkit",
+    "copyright": "Copyright © 2026 CamelKit",
     "asar": true,
     "files": [
       "out/**/*.*",
@@ -48,7 +48,7 @@
       "!**/node_modules/vite/**",
       "!**/node_modules/typescript/**"
     ],
-    "productName": "EvilLite",
+    "productName": "CamelKit",
     "publish": [
       {
         "provider": "github",
@@ -107,12 +107,12 @@
       ],
       "icon": "static/icons/icon.png",
       "category": "Game",
-      "maintainer": "EvilLite <atapifire@users.noreply.github.com>",
-      "synopsis": "Filterable world map and mod client for EvilQuest",
+      "maintainer": "CamelKit <atapifire@users.noreply.github.com>",
+      "synopsis": "Mod client and plugin ecosystem for EvilQuest",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "desktop": {
         "entry": {
-          "Name": "EvilLite",
+          "Name": "CamelKit",
           "Categories": "Game;"
         }
       }
@@ -123,10 +123,10 @@
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "static/icons/icon.ico",
       "uninstallerIcon": "static/icons/icon.ico",
-      "uninstallDisplayName": "EvilLite",
+      "uninstallDisplayName": "CamelKit",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "EvilLite"
+      "shortcutName": "CamelKit"
     }
   },
   "//deps-note": "Only packages the MAIN/PRELOAD process loads at runtime (externalized by electron-vite) belong here — electron-builder copies production deps into the app. Everything the RENDERER uses is bundled by Vite, so it lives in devDependencies and must NOT be added here (notably @babylonjs/core: ~348MB, loaded at runtime via the import map/CDN, not node_modules).",
@@ -138,8 +138,9 @@
   },
   "devDependencies": {
     "@babylonjs/core": "^8.28.1",
+    "@camelkit/core": "workspace:*",
     "@electron-toolkit/tsconfig": "^1.0.1",
-    "@evillite/core": "workspace:*",
+    "@evillite/core": "workspace:@camelkit/core@*",
     "@iconify/iconify": "^3.1.1",
     "@types/node": "^22.17.1",
     "electron": "^37.2.6",

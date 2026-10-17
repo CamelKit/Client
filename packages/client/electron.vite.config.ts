@@ -11,8 +11,8 @@ export default defineConfig(({ mode }) => {
         // Baked at build time. Only TRUE in the canonical CamelC0re/Client CI build (set in
         // build.yml from github.repository). Fork/test builds get FALSE → the auto-updater stays
         // off so a build a dev is testing is never clobbered; canonical builds update from
-        // CamelC0re/Client. See updater/index.ts.
-        __EVILLITE_CANONICAL__: JSON.stringify(process.env.EVILLITE_CANONICAL === 'true'),
+        __CAMELKIT_CANONICAL__: JSON.stringify(process.env.CAMELKIT_CANONICAL === 'true' || process.env.EVILLITE_CANONICAL === 'true'),
+        __EVILLITE_CANONICAL__: JSON.stringify(process.env.CAMELKIT_CANONICAL === 'true' || process.env.EVILLITE_CANONICAL === 'true'),
       },
     },
     preload: {

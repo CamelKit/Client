@@ -22,12 +22,12 @@ Which channel a build belongs to is decided by the **version/tag suffix** — on
 1. Bump `packages/client/package.json` `version` (e.g. `0.2.0-beta.16`).
 2. Commit, then tag + push the tag:
    ```bash
-   git tag -a v0.2.0-beta.16 -m "EvilLite v0.2.0-beta.16"
+   git tag -a v0.2.0-beta.16 -m "CamelKit v0.2.0-beta.16"
    git push origin v0.2.0-beta.16
    ```
 3. CI (`.github/workflows/build.yml`) builds Linux/Windows/macOS and publishes the GitHub
    Release on **this repo** (where the tag was pushed). Pre-release flag is automatic
-   (`contains(ref,'-')`). The in-app updater reads from `build.publish` → `Metsutan/EvilLite`.
+   (`contains(ref,'-')`). The in-app updater reads from `build.publish` → `CamelC0re/Client`.
 
 > CI only runs on the repo that holds the workflow + tag. Since CI lives here now, you can't
 > rely on it for quick local iteration — build locally (below).

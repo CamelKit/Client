@@ -45,7 +45,7 @@ export class HookManager {
 
         if (!classInstance) {
             console.warn(
-                `[Ryelite] ${className} (${mappedName}) is not defined in client.`
+                `[CamelKit] ${className} (${mappedName}) is not defined in client.`
             );
             return false;
         }
@@ -55,7 +55,7 @@ export class HookManager {
         const classPrototype = classInstance.prototype;
         if (!classPrototype) {
             console.warn(
-                `[Ryelite] ${className} (${mappedName}) is not a class constructor (missing prototype).`
+                `[CamelKit] ${className} (${mappedName}) is not a class constructor (missing prototype).`
             );
             return false;
         }
@@ -90,7 +90,7 @@ export class HookManager {
 
         if (!enumInstance) {
             console.warn(
-                `[Ryelite] ${enumName} (${mappedName}) is not defined in client.`
+                `[CamelKit] ${enumName} (${mappedName}) is not defined in client.`
             );
             return false;
         }
@@ -107,13 +107,13 @@ export class HookManager {
         const self = this;
         const targetClass = document.highlite.gameHooks[sourceClass];
         if (!targetClass) {
-            // console.warn(`[EvilLite] Class ${sourceClass} not found in game hooks.`);
+            // console.warn(`[CamelKit] Class ${sourceClass} not found in game hooks.`);
             return false;
         }
 
         const classObject = targetClass.prototype;
         if (!classObject) {
-            // console.warn(`[EvilLite] Attempted to register unknown client class hook (${sourceClass}).`);
+            // console.warn(`[CamelKit] Attempted to register unknown client class hook (${sourceClass}).`);
             return false;
         }
 
@@ -149,13 +149,13 @@ export class HookManager {
         const self = this;
         const targetClass = document.highlite.gameHooks[sourceClass];
         if (!targetClass) {
-            // console.warn(`[EvilLite] Class ${sourceClass} not found in game hooks.`);
+            // console.warn(`[CamelKit] Class ${sourceClass} not found in game hooks.`);
             return false;
         }
 
         const classObject = targetClass.prototype;
         if (!classObject) {
-            // console.warn(`[EvilLite] Attempted to register unknown client class override hook (${sourceClass}).`);
+            // console.warn(`[CamelKit] Attempted to register unknown client class override hook (${sourceClass}).`);
             return false;
         }
 
@@ -182,7 +182,7 @@ export class HookManager {
         const classObject = document.highlite.gameHooks[sourceClass];
 
         if (!classObject) {
-            // console.warn(`[EvilLite] Attempted to register unknown static client class hook (${sourceClass}).`);
+            // console.warn(`[CamelKit] Attempted to register unknown static client class hook (${sourceClass}).`);
             return false;
         }
 
@@ -204,7 +204,7 @@ export class HookManager {
 
     private hook(fnName: string, ...args: any[]): void {
         if (!document.highlite.managers.PluginManager) {
-            console.warn(`[Ryelite] Plugin Manager not initialized.`);
+            console.warn(`[CamelKit] Plugin Manager not initialized.`);
             return;
         }
         for (const plugin of document.highlite.managers.PluginManager.plugins) {
@@ -218,7 +218,7 @@ export class HookManager {
                     }
                 } catch (error) {
                     console.error(
-                        `[Ryelite] Error in plugin ${plugin.instance?.pluginName} (${fnName}):`,
+                        `[CamelKit] Error in plugin ${plugin.instance?.pluginName} (${fnName}):`,
                         error
                     );
                 }

@@ -53,14 +53,14 @@ export class HighliteResources {
             openRequest.onsuccess = (event: Event) => {
                 const target = event.target as IDBOpenDBRequest;
                 this.db = target.result;
-                console.debug(`[Ryelite Loader] IndexDB ${this.dbName} opened successfully.`);
+                console.debug(`[CamelKit Loader] IndexDB ${this.dbName} opened successfully.`);
                 this.initialized = true;
                 resolve(true);
             };
 
             // Handle failure
             openRequest.onerror = () => {
-                console.error(`[Ryelite Loader] IndexDB ${this.dbName} could not be opened.`);
+                console.error(`[CamelKit Loader] IndexDB ${this.dbName} could not be opened.`);
                 this.db = null;
                 this.initialized = false;
                 resolve(false);
@@ -70,10 +70,10 @@ export class HighliteResources {
             openRequest.onupgradeneeded = (event: IDBVersionChangeEvent) => {
                 const target = event.target as IDBOpenDBRequest;
                 this.db = target.result;
-                console.debug(`[Ryelite Loader] IndexDB ${this.dbName} was created.`);
+                console.debug(`[CamelKit Loader] IndexDB ${this.dbName} was created.`);
                 if (this.db && !this.db.objectStoreNames.contains(this.storeName)) {
                     this.db.createObjectStore(this.storeName);
-                    console.debug(`[Ryelite Loader] IndexDB Object Store ${this.storeName} was created.`);
+                    console.debug(`[CamelKit Loader] IndexDB Object Store ${this.storeName} was created.`);
                 }
             };
         });
@@ -84,19 +84,19 @@ export class HighliteResources {
 
         // Guard: initialisation not complete
         if (!this.initialized) {
-            console.warn('[Ryelite Loader] Attempted to setItem before the database was initialized');
+            console.warn('[CamelKit Loader] Attempted to setItem before the database was initialized');
             return false;
         }
 
         // Guard: database is null
         if (!this.db) {
-            console.warn(`[Ryelite Loader] Attempted to setItem on a 'null' database`);
+            console.warn(`[CamelKit Loader] Attempted to setItem on a 'null' database`);
             return false;
         }
 
         // Guard: object store missing
         if (!this.db.objectStoreNames.contains(this.storeName)) {
-            console.error(`[Ryelite Loader] Object store ${this.storeName} does not exist.`);
+            console.error(`[CamelKit Loader] Object store ${this.storeName} does not exist.`);
             return false;
         }
 
@@ -105,10 +105,10 @@ export class HighliteResources {
 
         // Debug success / failure of transaction (optional)
         transaction.oncomplete = () => {
-            console.debug(`[Ryelite Loader] setItem transaction request succeeded`);
+            console.debug(`[CamelKit Loader] setItem transaction request succeeded`);
         };
         transaction.onerror = () => {
-            console.warn(`[Ryelite Loader] setItem transaction request failed on ${this.storeName}`);
+            console.warn(`[CamelKit Loader] setItem transaction request failed on ${this.storeName}`);
         };
 
         // Get the object store
@@ -120,11 +120,11 @@ export class HighliteResources {
         // Return a promise representing completion
         return new Promise<boolean>((resolve) => {
             setRequest.onsuccess = () => {
-                console.debug(`[Ryelite Loader] setItem set Key: ${keyName} to Value (type): ${typeof value}`);
+                console.debug(`[CamelKit Loader] setItem set Key: ${keyName} to Value (type): ${typeof value}`);
                 resolve(true);
             };
             setRequest.onerror = () => {
-                console.warn(`[Ryelite Loader] setItem could not set Key: ${keyName}`);
+                console.warn(`[CamelKit Loader] setItem could not set Key: ${keyName}`);
                 resolve(false);
             };
         });
@@ -135,19 +135,19 @@ export class HighliteResources {
 
         // Guard: initialisation not complete
         if (!this.initialized) {
-            console.warn('[Ryelite Loader] Attempted to getItem before the database was initialized');
+            console.warn('[CamelKit Loader] Attempted to getItem before the database was initialized');
             return null;
         }
 
         // Guard: database is null
         if (!this.db) {
-            console.warn(`[Ryelite Loader] Attempted to getItem on a 'null' database`);
+            console.warn(`[CamelKit Loader] Attempted to getItem on a 'null' database`);
             return null;
         }
 
         // Guard: object store missing
         if (!this.db.objectStoreNames.contains(this.storeName)) {
-            console.error(`[Ryelite Loader] Object store ${this.storeName} does not exist.`);
+            console.error(`[CamelKit Loader] Object store ${this.storeName} does not exist.`);
             return null;
         }
 
@@ -155,10 +155,10 @@ export class HighliteResources {
         const transaction = this.db.transaction(this.storeName, 'readonly');
 
         transaction.oncomplete = () => {
-            console.debug(`[Ryelite Loader] getItem transaction request succeeded`);
+            console.debug(`[CamelKit Loader] getItem transaction request succeeded`);
         };
         transaction.onerror = () => {
-            console.warn(`[Ryelite Loader] getItem transaction request failed on ${this.storeName}`);
+            console.warn(`[CamelKit Loader] getItem transaction request failed on ${this.storeName}`);
         };
 
         // Lookup the key
@@ -169,12 +169,12 @@ export class HighliteResources {
         return new Promise<T | null>((resolve) => {
             getRequest.onsuccess = () => {
                 console.debug(
-                    `[Ryelite Loader] getItem retrieved Key: ${keyName} with Value (type): ${typeof getRequest.result}`
+                    `[CamelKit Loader] getItem retrieved Key: ${keyName} with Value (type): ${typeof getRequest.result}`
                 );
                 resolve(getRequest.result as T ?? null);
             };
             getRequest.onerror = () => {
-                console.warn(`[Ryelite Loader] getItem could not retrieve Key: ${keyName}`);
+                console.warn(`[CamelKit Loader] getItem could not retrieve Key: ${keyName}`);
                 resolve(null);
             };
         });
@@ -184,11 +184,11 @@ export class HighliteResources {
     async deleteItem(keyName: string): Promise<boolean> {
 
         if (!this.initialized || !this.db) {
-            console.warn('[Ryelite Loader] Attempted to deleteItem before database was ready');
+            console.warn('[CamelKit Loader] Attempted to deleteItem before database was ready');
             return false;
         }
         if (!this.db.objectStoreNames.contains(this.storeName)) {
-            console.error(`[Ryelite Loader] Object store ${this.storeName} does not exist.`);
+            console.error(`[CamelKit Loader] Object store ${this.storeName} does not exist.`);
             return false;
         }
 
@@ -198,11 +198,11 @@ export class HighliteResources {
 
         return new Promise<boolean>((resolve) => {
             delReq.onsuccess = () => {
-                console.debug(`[Ryelite Loader] deleteItem removed Key: ${keyName}`);
+                console.debug(`[CamelKit Loader] deleteItem removed Key: ${keyName}`);
                 resolve(true);
             };
             delReq.onerror = () => {
-                console.warn(`[Ryelite Loader] deleteItem failed for Key: ${keyName}`);
+                console.warn(`[CamelKit Loader] deleteItem failed for Key: ${keyName}`);
                 resolve(false);
             };
         });
@@ -211,11 +211,11 @@ export class HighliteResources {
     // Clear the entire store
     async clear(): Promise<boolean> {
         if (!this.initialized || !this.db) {
-            console.warn('[Ryelite Loader] Attempted to clear before database was ready');
+            console.warn('[CamelKit Loader] Attempted to clear before database was ready');
             return false;
         }
         if (!this.db.objectStoreNames.contains(this.storeName)) {
-            console.error(`[Ryelite Loader] Object store ${this.storeName} does not exist.`);
+            console.error(`[CamelKit Loader] Object store ${this.storeName} does not exist.`);
             return false;
         }
         const tx = this.db.transaction(this.storeName, 'readwrite');
@@ -223,11 +223,11 @@ export class HighliteResources {
         const clearReq = store.clear();
         return new Promise<boolean>((resolve) => {
             clearReq.onsuccess = () => {
-                console.debug(`[Ryelite Loader] clear removed all keys in ${this.storeName}`);
+                console.debug(`[CamelKit Loader] clear removed all keys in ${this.storeName}`);
                 resolve(true);
             };
             clearReq.onerror = () => {
-                console.warn(`[Ryelite Loader] clear failed on ${this.storeName}`);
+                console.warn(`[CamelKit Loader] clear failed on ${this.storeName}`);
                 resolve(false);
             };
         });
@@ -239,7 +239,7 @@ export class HighliteResources {
             this.db.close();
             this.db = null;
             this.initialized = false;
-            console.debug(`[Ryelite Loader] IndexDB ${this.dbName} was closed.`);
+            console.debug(`[CamelKit Loader] IndexDB ${this.dbName} was closed.`);
         }
     }
 }

@@ -1,4 +1,4 @@
-# EvilLite Client
+# CamelKit Client
 
 An open-source, RuneLite-inspired desktop client for the game **EvilQuest** ([Memories of Magic](https://memoriesofmagic.com)).
 
@@ -23,7 +23,7 @@ An open-source, RuneLite-inspired desktop client for the game **EvilQuest** ([Me
 
 ## Overview
 
-EvilLite intercepts the web game client for EvilQuest, loads custom styling and titlebars, injects game hooks via the **Reflector** engine, and hosts an extensible plugin ecosystem (such as Collection Log, World Map, and custom UI overlays).
+CamelKit intercepts the web game client for EvilQuest, loads custom styling and titlebars, injects game hooks via the **Reflector** engine, and hosts an extensible plugin ecosystem (such as Collection Log, World Map, and custom UI overlays).
 
 ### Core Features
 
@@ -40,7 +40,7 @@ EvilLite intercepts the web game client for EvilQuest, loads custom styling and 
 Client/
 ├── packages/
 │   ├── client/          # Electron desktop application (Main, Preload, and Renderer)
-│   ├── core/            # @evillite/core: Reflector, game hook manager, plugin base classes, APIs
+│   ├── core/            # @camelkit/core: Reflector, game hook manager, plugin base classes, APIs
 │   └── mobile/          # Mobile client package
 ├── logs/                # Shared runtime log stream (logs/client.log)
 ├── pnpm-workspace.yaml  # Workspace config (nodeLinker: hoisted)
@@ -169,7 +169,7 @@ Run from the root of the repository:
 | Command | Description |
 | :--- | :--- |
 | `pnpm dev` | Starts Turborepo dev pipeline across all packages |
-| `pnpm build` | Compiles `@evillite/core` and builds `@evillite/client` artifacts (`out/`) |
+| `pnpm build` | Compiles `@camelkit/core` and builds `@camelkit/client` artifacts (`out/`) |
 | `pnpm logs` | Tails `logs/client.log` in real time |
 | `pnpm format` | Formats all code with Prettier |
 | `pnpm format:check` | Verifies code formatting |
@@ -180,10 +180,10 @@ Run from the root of the repository:
 To build production distributables (run from `packages/client` or via workspace filters):
 
 ```bash
-pnpm -F @evillite/client build:win     # Builds Windows installer / executable
-pnpm -F @evillite/client build:linux   # Builds Linux AppImage
-pnpm -F @evillite/client build:mac     # Builds macOS universal DMG
-pnpm -F @evillite/client build:unpack  # Unpacked directory without installer
+pnpm -F @camelkit/client build:win     # Builds Windows installer / executable
+pnpm -F @camelkit/client build:linux   # Builds Linux AppImage
+pnpm -F @camelkit/client build:mac     # Builds macOS universal DMG
+pnpm -F @camelkit/client build:unpack  # Unpacked directory without installer
 ```
 
 ---

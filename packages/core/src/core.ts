@@ -42,7 +42,7 @@ export class Highlite {
     pluginDataManager: PluginDataManager;
 
     constructor() {
-        console.info('[Ryelite] Core Initializing!');
+        console.info('[CamelKit] Core Initializing!');
 
         document.highlite = {
             managers: {},
@@ -79,11 +79,11 @@ export class Highlite {
         try {
             this.pluginManager.ensureHubIcon();
             this.settingsManager.ensureSettingsIcon();
-        } catch (e) { console.warn('[EvilLite] early sidebar icon registration failed', e); }
+        } catch (e) { console.warn('[CamelKit] early sidebar icon registration failed', e); }
     }
 
 
-    // NOTE: The login screen buttons attempt to open up in the ryelite window without these.
+    // NOTE: The login screen buttons attempt to open up in the camelkit window without these.
     async loginHooks(fnName: string, ...args: any[]) {
         if (fnName === 'LoginScreen_handleRegisterButtonClicked') {
             window.open('https://memoriesofmagic.com/register', '_blank');
@@ -111,7 +111,7 @@ export class Highlite {
     }
 
     async stopHook(fnName: string, ...args: any[]) {
-        console.warn(`[Ryelite] Stopping all plugins due to: ${fnName}`);
+        console.warn(`[CamelKit] Stopping all plugins due to: ${fnName}`);
         this.panelManager.forceClose();
         this.settingsManager.deinit();
         this.pluginManager.stopAll();
@@ -119,7 +119,7 @@ export class Highlite {
     }
 
     initialize() {
-        console.info("[Ryelite] Core Initializing")
+        console.info("[CamelKit] Core Initializing")
 
         // Bind the classes from the hook manager (registerClass)
         // Read all the found signature binding 
@@ -144,13 +144,13 @@ export class Highlite {
     }
 
     async start() {
-        console.info('[Ryelite] Core Started!');
+        console.info('[CamelKit] Core Started!');
         await this.databaseManager.initDB();
         if (!this.databaseManager.database) {
-            console.error('[Ryelite] Database not initialized!');
+            console.error('[CamelKit] Database not initialized!');
             return;
         } else {
-            console.info('[Ryelite] Database initialized!');
+            console.info('[CamelKit] Database initialized!');
         }
         await this.notificationManager.askNotificationPermission();
     // Initialize Plugin Hub now that DB is ready
@@ -158,12 +158,12 @@ export class Highlite {
     }
 
     stop() {
-        console.info('[Ryelite] Core Stopped!');
+        console.info('[CamelKit] Core Stopped!');
         this.pluginManager.stopAll();
     }
 
     reload() {
-        console.info('[Ryelite] Core Reloading');
+        console.info('[CamelKit] Core Reloading');
         this.stop();
         this.start();
     }

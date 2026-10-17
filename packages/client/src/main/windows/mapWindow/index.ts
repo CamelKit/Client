@@ -58,7 +58,7 @@ export function registerMapWindowIPC(): void {
             }
             const win = new BrowserWindow({
                 width: 980, height: 760, minWidth: 360, minHeight: 280,
-                title: 'EvilLite — World Map',
+                title: 'CamelKit — World Map',
                 backgroundColor: '#111111',
                 webPreferences: {
                     preload: path.join(__dirname, '../preload/index.js'),

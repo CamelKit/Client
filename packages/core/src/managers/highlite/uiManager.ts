@@ -85,7 +85,7 @@ export class UIManager {
                 element.classList.add('highlite-ui-client-internal');
                 if (!document.getElementById('hs-screen-mask')) {
                     throw new Error(
-                        'Ryelite UI Manager: #hs-screen-mask not found'
+                        'CamelKit UI Manager: #hs-screen-mask not found'
                     );
                 } else {
                     document

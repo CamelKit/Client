@@ -1,8 +1,8 @@
 {
-  "name": "@evillite/mobile",
+  "name": "@camelkit/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "EvilLite mobile shell (Capacitor) — Android spike. Wraps the same renderer the desktop client uses.",
+  "description": "CamelKit mobile shell (Capacitor) — Android spike. Wraps the same renderer the desktop client uses.",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",
     "cap:add:android": "cap add android",

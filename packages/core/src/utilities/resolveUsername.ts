@@ -30,6 +30,6 @@ export function resolveUsername(): string {
     const emName = hooks.EntityManager?.Instance?._mainPlayer?._nameLowerCase;
     if (typeof emName === 'string' && emName) return emName;
 
-    console.warn('[EvilLite] could not resolve username — using "default" bucket');
+    console.warn('[CamelKit] could not resolve username — using "default" bucket');
     return 'default';
 }

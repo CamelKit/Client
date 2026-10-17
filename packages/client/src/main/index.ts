@@ -94,10 +94,10 @@ app.whenReady().then(async () => {
         } catch (e) { console.log('[GPU] info unavailable', e); }
     }, 6000);
 
-    // Globally strip Electron and EvilLite from User-Agent so reCAPTCHA JS doesn't see it in navigator.userAgent
-    app.userAgentFallback = app.userAgentFallback.replace(/Electron\/[0-9\.]+\s?/g, '').replace(/EvilLite\/[0-9\.]+\s?/g, '').trim();
+    // Globally strip Electron, CamelKit, and EvilLite from User-Agent so reCAPTCHA JS doesn't see it in navigator.userAgent
+    app.userAgentFallback = app.userAgentFallback.replace(/Electron\/[0-9\.]+\s?/g, '').replace(/CamelKit\/[0-9\.]+\s?/gi, '').replace(/EvilLite\/[0-9\.]+\s?/gi, '').trim();
     
-    electronApp.setAppUserModelId('com.ryelite.desktop');
+    electronApp.setAppUserModelId('net.evilquest.camelkit');
     const updateWindow: BrowserWindow = await createUpdateWindow();
 
     consoleWindowRef = await createConsoleWindow();

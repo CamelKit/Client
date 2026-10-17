@@ -45,7 +45,7 @@ export class NotificationManager {
             return false;
         }
 
-        const notification = new Notification('Ryelite', {
+        const notification = new Notification('CamelKit', {
             icon: './static/icons/icon.png',
             body: message,
         });
@@ -60,19 +60,19 @@ export class NotificationManager {
         // Check if the browser supports notifications
         if (!('Notification' in window)) {
             console.info(
-                '[Ryelite] This browser does not support notifications.'
+                '[CamelKit] This browser does not support notifications.'
             );
             this.canNotify = false;
         }
 
         if (Notification.permission === 'granted') {
-            console.info('[Ryelite] Notification permission granted.');
+            console.info('[CamelKit] Notification permission granted.');
             this.canNotify = true;
         } else if (Notification.permission === 'denied') {
-            console.info('[Ryelite] Notification permission denied.');
+            console.info('[CamelKit] Notification permission denied.');
             this.canNotify = false;
         } else {
-            console.info('[Ryelite] Notification permission dismissed.');
+            console.info('[CamelKit] Notification permission dismissed.');
             this.canNotify = false;
         }
     }

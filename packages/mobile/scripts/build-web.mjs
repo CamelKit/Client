@@ -1,11 +1,11 @@
-// Stage the EvilLite renderer for the Android build.
+// Stage the CamelKit renderer for the Android build.
 //
 // The mobile shell reuses the SAME renderer the desktop client ships. We build the
 // client's renderer, then copy its output into `www/` (alongside the placeholder
 // index.html). Capacitor bundles `www/` into the APK at `assets/public/`, so at runtime
-// EvilLiteWebViewClient.shouldInterceptRequest serves `/__evillite__/<file>` from
+// EvilLiteWebViewClient.shouldInterceptRequest serves `/__camelkit__/<file>` (or legacy `/__evillite__/<file>`) from
 // `assets/public/<file>` — i.e. client.html lands at assets/public/client.html and the
-// renderer's relative `./assets/...` references resolve under /__evillite__/.
+// renderer's relative `./assets/...` references resolve under /__camelkit__/.
 //
 // NOTE: the desktop renderer is built for Electron (electron-vite). For mobile it must be
 // built WITHOUT Electron-only assumptions (ipcRenderer is already a safe no-op outside
@@ -27,7 +27,7 @@ const wwwDir = join(mobileRoot, 'www');
 
 if (!existsSync(rendererOut)) {
     console.error(`[build-web] renderer output not found at ${rendererOut}`);
-    console.error('[build-web] run `yarn workspace @evillite/client build` first.');
+    console.error('[build-web] run `pnpm --filter @camelkit/client build` first.');
     process.exit(1);
 }
 

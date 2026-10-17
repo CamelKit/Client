@@ -1,4 +1,4 @@
-name: Build EvilLite (Linux / Windows / macOS)
+name: Build CamelKit (Linux / Windows / macOS)
 
 # Cross-platform builds happen on native runners — Windows installers need Windows
 # (or Wine), and macOS .dmg / universal / code-signing are macOS-only. A single Linux
@@ -68,15 +68,15 @@ jobs:
         run: node scripts/guard-input-fabrication.mjs
 
       - name: Build core
-        run: yarn workspace @evillite/core build
+        run: yarn workspace @camelkit/core build
 
       - name: Build client (renderer + main + copy plugin cache)
-        # __EVILLITE_CANONICAL__ is baked here: TRUE only when this build runs in the canonical
-        # CamelC0re/Client repo, so fork builds (e.g. atapifire/EvilLite betas testers grab) never
-        # auto-update, while canonical builds update from CamelC0re/Client. See updater/index.ts.
+        # __CAMELKIT_CANONICAL__ is baked here: TRUE only when this build runs in the canonical
+        # CamelC0re/Client repo, so fork builds never auto-update.
         env:
+          CAMELKIT_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
           EVILLITE_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
-        run: yarn workspace @evillite/client build
+        run: yarn workspace @camelkit/client build
 
       - name: Package (${{ matrix.platform }})
         env:
@@ -86,13 +86,13 @@ jobs:
         run: |
           EV=$(node -p "require('electron/package.json').version")
           echo "Packaging with electron $EV"
-          yarn workspace @evillite/client exec electron-builder \
+          yarn workspace @camelkit/client exec electron-builder \
             --${{ matrix.platform }} -c.electronVersion="$EV" --publish never
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: evillite-${{ matrix.platform }}
+          name: camelkit-${{ matrix.platform }}
           if-no-files-found: warn
           path: |
             packages/client/dist/*.AppImage
@@ -145,8 +145,8 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Build core + renderer
         run: |
-          yarn workspace @evillite/core build
-          yarn workspace @evillite/client build
+          yarn workspace @camelkit/core build
+          yarn workspace @camelkit/client build
       # Fork builds (atapifire/EvilLite) -> DEBUG apk: debuggable, WebView inspectable over adb, for
       # our own testing. Canonical (CamelC0re/Client) -> SIGNED RELEASE apk: debuggable=false, so the
       # WebView can't be driven over chrome://inspect (CDP injects isTrusted input that would bypass
@@ -181,16 +181,16 @@ jobs:
               -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
               -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
               -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD")
-            cp android/app/build/outputs/apk/release/app-release.apk out-apk/EvilLite-android.apk
+            cp android/app/build/outputs/apk/release/app-release.apk out-apk/CamelKit-android.apk
           else
             (cd android && ./gradlew assembleDebug --no-daemon)
-            cp android/app/build/outputs/apk/debug/app-debug.apk out-apk/EvilLite-android-debug.apk
+            cp android/app/build/outputs/apk/debug/app-debug.apk out-apk/CamelKit-android-debug.apk
           fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: evillite-android
+          name: camelkit-android
           if-no-files-found: warn
           path: packages/mobile/out-apk/*.apk
 
@@ -221,15 +221,15 @@ jobs:
             Automated cross-platform build. **Unsigned**, so you'll see a one-time OS warning.
 
             ### Install
-            - **Windows** — `EvilLite-Setup-*.exe`. SmartScreen → *More info* → *Run anyway*.
+            - **Windows** — `CamelKit-Setup-*.exe`. SmartScreen → *More info* → *Run anyway*.
             - **macOS** — `*.dmg` (use `arm64` for Apple Silicon, the plain one for Intel).
               Drag to Applications, then right-click the app → *Open* the first time
-              (or `xattr -dr com.apple.quarantine /Applications/EvilLite.app`).
-            - **Linux — easiest:** `*.deb` → `sudo apt install ./EvilLite-*.deb`, then launch
-              **EvilLite** from your apps menu. No flags, no extra packages.
+              (or `xattr -dr com.apple.quarantine /Applications/CamelKit.app`).
+            - **Linux — easiest:** `*.deb` → `sudo apt install ./CamelKit-*.deb`, then launch
+              **CamelKit** from your apps menu. No flags, no extra packages.
             - **Linux — portable:** `*.AppImage` or `*.tar.gz`. On modern distros these may need
               `--no-sandbox` (and the AppImage needs `libfuse2`); the `.deb` avoids both.
-            - **Android** — `EvilLite-android-debug.apk`. Sideload it (enable *Install unknown apps*).
+            - **Android** — `CamelKit-android-debug.apk`. Sideload it (enable *Install unknown apps*).
               Unsigned debug build; log in with your EvilQuest account in the system browser.
 
             `arm64` files are for ARM machines (Apple Silicon, ARM Linux); the others are x64/Intel.

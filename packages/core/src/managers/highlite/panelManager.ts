@@ -81,7 +81,7 @@ export class PanelManager {
     requestMenuItem(icon: string, title: string) {
         // Verify an equivalent icon does not exist
         if (this.barContentPages[icon]) {
-            throw new Error(`[Ryelite] Bar Icon ${icon} already exists`);
+            throw new Error(`[CamelKit] Bar Icon ${icon} already exists`);
         }
 
         const iconElement = document.createElement('div');
@@ -135,7 +135,7 @@ export class PanelManager {
     removeMenuItem(icon: string) {
         // Remove Icon and Content
         if (!this.barIcons[icon] || !this.barContentPages[icon]) {
-            throw new Error(`[Ryelite] Bar Icon ${icon} does not exist`);
+            throw new Error(`[CamelKit] Bar Icon ${icon} does not exist`);
         }
 
         this.highliteBar?.removeChild(this.barIcons[icon]);

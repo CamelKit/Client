@@ -516,13 +516,13 @@ export class ContextMenuManager {
         const self = this;
         const targetClass = document.highlite.gameHooks[sourceClass];
         if (!targetClass) {
-            console.warn(`[EvilLite] Class ${sourceClass} not found in game hooks.`);
+            console.warn(`[CamelKit] Class ${sourceClass} not found in game hooks.`);
             return false;
         }
 
         const classObject = targetClass.prototype;
         if (!classObject) {
-            console.warn(`[EvilLite] Attempted to register unknown client class context hook (${sourceClass}).`);
+            console.warn(`[CamelKit] Attempted to register unknown client class context hook (${sourceClass}).`);
             return false;
         }
 
@@ -546,7 +546,7 @@ export class ContextMenuManager {
 
         if (!classObject) {
             console.warn(
-                `[EvilLite] Attempted to register unknown static client class hook (${sourceClass}).`
+                `[CamelKit] Attempted to register unknown static client class hook (${sourceClass}).`
             );
             return false;
         }

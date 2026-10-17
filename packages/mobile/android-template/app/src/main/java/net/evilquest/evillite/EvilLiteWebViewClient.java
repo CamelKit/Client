@@ -49,7 +49,7 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
     private static final String ELECTRON_SHIM =
         // Explicit platform flag plugins can read to adapt for mobile (e.g. overlay-only, no popout).
         // Also reflected in window.electron.process.platform below ('android').
-        "(function(){window.EvilLiteMobile={platform:'android'};var noop=function(){};var N=function(){return window.EvilLiteNative;};" +
+        "(function(){window.CamelKitMobile=window.EvilLiteMobile={platform:'android'};var noop=function(){};var N=function(){return window.CamelKitNative||window.EvilLiteNative;};" +
         "var cbN=0,cbM={};" +
         "window.__eqNativeResolve=function(id,res){var f=cbM[id];if(f){delete cbM[id];f(res);}};" +
         "function nat(m){return new Promise(function(res){var n=N();if(!n||typeof n[m]!=='function'){res(undefined);return;}" +
@@ -67,7 +67,7 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
         // APK (assets/public/plugins-data/<ns>.json, served by the interceptor). This gives the map
         // its prebaked model-icons + terrain so it never renders icons live (which spun up a second
         // Babylon/WebGL context and blanked the game's 3D view).
-        "if(ch==='plugin-asset-cache:load'){var ns=arguments[1];return fetch('/__evillite__/plugins-data/'+ns+'.json').then(function(r){return r.ok?r.json():null;}).then(function(j){return (j&&j.entries)||{};}).catch(function(){return {};});}" +
+        "if(ch==='plugin-asset-cache:load'){var ns=arguments[1];return fetch('/__camelkit__/plugins-data/'+ns+'.json').catch(function(){return fetch('/__evillite__/plugins-data/'+ns+'.json');}).then(function(r){return r.ok?r.json():null;}).then(function(j){return (j&&j.entries)||{};}).catch(function(){return {};});}" +
         "return Promise.resolve(undefined);}," +
         "send:function(ch){var n=N();if(!n)return;try{if(ch==='oauth:heartbeat')n.heartbeat();else if(ch==='oauth:logged-out')n.loggedOut();}catch(e){}}," +
         "sendSync:function(ch){var n=N();if(n&&ch==='oauth:logged-out'){try{return n.loggedOut();}catch(e){}}return null;}};" +
@@ -110,9 +110,12 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
         String path = url.getPath();
         if ("evilquest.net".equals(host) && path != null) {
 
-            // 1. EvilLite's own renderer files, served from bundled assets.
-            if (path.startsWith("/__evillite__/")) {
-                String asset = "public/" + path.substring("/__evillite__/".length());
+            // 1. CamelKit / EvilLite's own renderer files, served from bundled assets.
+            boolean isCamelKit = path.startsWith("/__camelkit__/");
+            boolean isEvilLite = path.startsWith("/__evillite__/");
+            if (isCamelKit || isEvilLite) {
+                String prefix = isCamelKit ? "/__camelkit__/" : "/__evillite__/";
+                String asset = "public/" + path.substring(prefix.length());
                 try {
                     InputStream stream = view.getContext().getAssets().open(asset);
                     Map<String, String> h = new HashMap<>();
@@ -127,7 +130,7 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
                 } catch (Exception e) {
                     return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found",
                         new HashMap<>(), new ByteArrayInputStream(
-                            ("EvilLite asset not found: " + asset).getBytes(StandardCharsets.UTF_8)));
+                            ("CamelKit asset not found: " + asset).getBytes(StandardCharsets.UTF_8)));
                 }
             }
 

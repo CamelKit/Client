@@ -1,6 +1,6 @@
-import { Plugin } from '@evillite/core/src/interfaces/highlite/plugin/plugin.class';
-import { SettingsTypes } from '@evillite/core/src/interfaces/highlite/plugin/pluginSettings.interface';
-import { ModelIconCache } from '@evillite/core/src/utilities/modelIconCache';
+import { Plugin } from '@camelkit/core/src/interfaces/highlite/plugin/plugin.class';
+import { SettingsTypes } from '@camelkit/core/src/interfaces/highlite/plugin/pluginSettings.interface';
+import { ModelIconCache } from '@camelkit/core/src/utilities/modelIconCache';
 
 /**
  * Collection Log / Drop Log (MVP) — tracks every item you EARN, in a bank-style UI, organised by
@@ -106,7 +106,7 @@ export default class CollectionLogPlugin extends Plugin {
         });
     }
 
-    private get isMobile(): boolean { return !!(window as any).EvilLiteMobile || (window as any).electron?.process?.platform === 'android' || (window as any).electron?.process?.platform === 'ios'; }
+    private get isMobile(): boolean { return !!(window as any).CamelKitMobile || !!(window as any).EvilLiteMobile || (window as any).electron?.process?.platform === 'android' || (window as any).electron?.process?.platform === 'ios'; }
     private get gm(): any { return this.gameHooks?.GameManager?.Instance ?? (window as any).gm ?? null; }
     private get em(): any { return this.gameHooks?.EntityManager?.Instance ?? null; }
 
