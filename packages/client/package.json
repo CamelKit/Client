@@ -1,6 +1,7 @@
 {
   "name": "@camelkit/client",
   "productName": "CamelKit",
+  "desktopName": "camelkit.desktop",
   "version": "0.0.1",
   "description": "A RuneLite-esque Client for the game EvilQuest",
   "homepage": "https://github.com/CamelKit/Client#readme",
@@ -36,6 +37,8 @@
   },
   "build": {
     "appId": "net.evilquest.camelkit",
+    "productName": "CamelKit",
+    "executableName": "camelkit",
     "copyright": "Copyright © 2026 CamelKit",
     "asar": true,
     "files": [
@@ -48,7 +51,6 @@
       "!**/node_modules/vite/**",
       "!**/node_modules/typescript/**"
     ],
-    "productName": "CamelKit",
     "publish": [
       {
         "provider": "github",
@@ -82,6 +84,8 @@
       "icon": "static/icons/icon.ico"
     },
     "linux": {
+      "syncDesktopName": true,
+      "executableName": "camelkit",
       "target": [
         {
           "target": "deb",
