@@ -285,8 +285,9 @@ jobs:
         run: |
           node scripts/build-web.mjs
           npx cap add android
-          cp android-template/app/src/main/java/net/evilquest/evillite/*.java \
-             android/app/src/main/java/net/evilquest/evillite/
+          mkdir -p android/app/src/main/java/net/evilquest/camelkit
+          cp android-template/app/src/main/java/net/evilquest/camelkit/*.java \
+             android/app/src/main/java/net/evilquest/camelkit/
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           npx cap sync android
           mkdir -p out-apk

@@ -80,7 +80,7 @@ This is the feasibility proof — the rest is wiring.
 ```
 packages/mobile/
   package.json            # Capacitor deps + scripts
-  capacitor.config.ts     # appId net.evilquest.evillite; bypasses Capacitor's localhost server
+  capacitor.config.ts     # appId net.evilquest.camelkit; bypasses Capacitor's localhost server
   scripts/build-web.mjs   # stages the client renderer into www/public/ (APK assets)
   www/index.html          # Capacitor-required entry; only shows if navigation failed
   android-template/       # native files to drop into the generated android/ project:
@@ -122,8 +122,8 @@ pnpm --filter @camelkit/mobile build:web
 
 # 2. Generate the native Android project + drop in the EvilLite native files
 npx cap add android
-cp android-template/app/src/main/java/net/evilquest/evillite/*.java \
-   android/app/src/main/java/net/evilquest/evillite/   # overwrites the generated stub MainActivity
+cp android-template/app/src/main/java/net/evilquest/camelkit/*.java \
+   android/app/src/main/java/net/evilquest/camelkit/   # overwrites the generated stub MainActivity
 echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
 # 3. Build a debug APK

@@ -1,4 +1,4 @@
-package net.evilquest.evillite;
+package net.evilquest.camelkit;
 
 import android.net.Uri;
 import android.webkit.CookieManager;

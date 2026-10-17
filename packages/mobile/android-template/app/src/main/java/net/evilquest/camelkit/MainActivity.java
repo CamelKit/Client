@@ -1,4 +1,4 @@
-package net.evilquest.evillite;
+package net.evilquest.camelkit;
 
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
