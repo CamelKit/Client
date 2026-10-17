@@ -53,7 +53,12 @@ export class HookManager {
         document.highlite.gameHooks[mappedName] = classInstance;
 
         const classPrototype = classInstance.prototype;
-
+        if (!classPrototype) {
+            console.warn(
+                `[Ryelite] ${className} (${mappedName}) is not a class constructor (missing prototype).`
+            );
+            return false;
+        }
 
         const prototypeMethods = Object.entries(Object.getOwnPropertyDescriptors(classPrototype))
             .filter(([name, desc]) =>

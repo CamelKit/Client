@@ -265,8 +265,11 @@ export class Reflector {
                 else if (arg.right.type === 'ParenthesizedExpression'
                     && arg.right.expression.type === 'AssignmentExpression')
                     assign = arg.right.expression;
+                else if (arg.right.type === 'ObjectExpression') {
+                    assign = { left: { name: arg.left.name } };
+                }
                 if (!assign) return;
-                if (assign.left.type !== 'Identifier') return;
+                if (assign.left.type && assign.left.type !== 'Identifier') return;
                 if (assign.left.name !== arg.left.name) return;
 
                 const callee = node.callee;

@@ -129,30 +129,15 @@ export class Highlite {
         // These are the lookup tables
         Reflector.bindEnumHooks(this.hookManager);
 
-        // Function Hook-ins
-        this.hookManager.registerClassOverrideHook('LoginScreen', '_handleRegisterButtonClicked', this.loginHooks);
-        this.hookManager.registerClassOverrideHook('LoginScreen', '_handleHomeButtonClicked', this.loginHooks);
-
         // Start Plugins and Settings after Login
         this.hookManager.registerClassHook('SocketManager', 'markGameCryptoReady', this.startHook.bind(this));
-        this.hookManager.registerClassHook('GameEngine', 'resolveLoginReady', this.startHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_loggedIn', this.startHook.bind(this));
+        this.hookManager.registerClassHook('GameManager', 'resolveLoginReady', this.startHook.bind(this));
 
         // Stop Plugins and Settings during logout events
-        this.hookManager.registerClassHook('GameEngine', 'handleConnectionLost', this.stopHook.bind(this));
+        this.hookManager.registerClassHook('GameManager', 'handleConnectionLost', this.stopHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', 'closeQuietly', this.stopHook.bind(this));
         this.hookManager.registerClassHook('SocketManager', 'failGameSocket', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_handleLostConnection', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_handleReconnectFailed', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_handleConnectFailed', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_handleLoggedOut', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', '_loginFailed', this.stopHook.bind(this));
-
-        // TODO: Find a better way to handle manager hook-ins
-        this.contextMenuManager.registerContextHook('ContextMenuItemManager','_createInventoryItemContextMenuItems', this.contextMenuManager.inventoryContextHook);
-        this.contextMenuManager.registerContextHook('ContextMenuItemManager','_createGameWorldContextMenuItems', this.contextMenuManager.gameWorldContextHook);
-        this.hookManager.registerStaticClassHook('TargetActionManager', 'handleTargetAction');
-        this.hookManager.registerStaticClassHook('TargetActionManager','getActionsAndEntitiesAtMousePointer',this.contextMenuManager.ActionSorting);
+        this.hookManager.registerClassHook('SocketManager', 'onDisconnect', this.stopHook.bind(this));
 
 
     // Plugin Hub UI will be initialized after DB is ready in start()

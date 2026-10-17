@@ -19,69 +19,55 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { ClassSignature, EnumSignature } from './types';
 
-// Define the map of all class hook signatures
+// Define the map of all active client class signatures verified against Memories of Magic bundles
 export const ClassSignatures: [string, ClassSignature][] = [
-    // Define all the class signatures
     // GameManager is the top-level instance (window.gm). It is NOT a game-side singleton,
     // so its live instance is captured by the HookManager on first hooked-method call and
     // exposed as gameHooks.GameManager.Instance (see hookManager.registerClassHook).
     ['GameManager', { methods: ['updateMinimap', 'showPlayerChatBubble', 'worldObjectDisplayName', 'waitForCurrentLocalPlayerReady'] }],
-    // EvilQuest's entity manager (class `ue`): NPCs, remote players, ground items.
-    // Like GameManager it is not a static singleton, so the HookManager captures
-    // its live instance on first hooked-method call -> gameHooks.EntityManager.Instance.
+    // Entity manager (NPCs, remote players, ground items). Captured on first hooked call -> gameHooks.EntityManager.Instance.
     ['EntityManager', { methods: ['createRemotePlayer', 'createNpc', 'findNearestNpc', 'createGroundItem', 'removeRemotePlayer'] }],
-    ['GroundItemManager', { methods: ['createGroundItem', 'removeGroundItem', 'refreshGroundItemLabels'] }],
     ['MeshManager', { methods: ['hasTreeModel', 'getStump', 'hasStump'] }],
     ['WorldMapManager', { methods: ['installCompassStyles', 'setCompassClickHandler', 'drawMinimapMarkers'] }],
     ['AtmosphereManager', { methods: ['refreshFogDefines', 'dispose'] }],
-    ['WorldEntityManager', { methods: ['createGroundItem', 'removeGroundItem', 'interpolateRemotePlayers'] }],
     ['SpellManager', { methods: ['setLearnedSpells', 'getAutocastDefinition', 'applyAutocastFromServer'] }],
     ['SpellMeshManager', { methods: ['buildGather', 'buildProjectile', 'buildIceImpact'] }],
-    ['GameLoop', { methods: ['shouldRenderSceneFrame', 'updateRenderFrameUi'] }],
     ['ChatManager', { methods: ['focusChatFromGlobalEnter', 'shouldFocusChatFromGlobalEnter', 'buildUI'] }],
     ['RangeManager', { methods: ['prepareRendering', 'launch', 'createArrowRoot'] }],
     ['SocketManager', { methods: ['openSockets', 'sendMove', 'sendChat'] }],
-    ['GameEngine', { methods: ['connectAndAuth', 'whenPreloaded'] }],
-    ['ItemManager', { methods: ['countLocalInventoryItem', 'localHasEquippedItem', 'pickupItem'] }],
     ['LoginScreen', { methods: ['createRememberUsernameRow', 'createHomepageLink', 'createMusicControl'] }],
-    ['PrivateChatMessageList', { methods: ['switchTab', 'handleEmoteAutocompleteKey', 'addMessage'] }],
-    ['InventoryManager', { methods: ['setToolsControls', 'setAdminItemContextEnabled', 'buildUI'] }],
     ['UIManager', { methods: ['setToolsControls', 'setQuestDefs', 'setSocialLists'] }],
+    ['InventoryManager', { methods: ['setToolsControls', 'setAdminItemContextEnabled', 'buildUI'] }],
     ['BankUIManager', { methods: ['openWithContents', 'updateBankSlot', 'renderBankSlot'] }],
+    ['TradeUIManager', { methods: ['openSession', 'updateOffer', 'updateAcceptState', 'close'] }],
+    ['DuelUIManager', { methods: ['openSession', 'updateStake', 'updateAcceptState', 'close'] }],
+    ['ShopUIManager', { methods: ['canBuy', 'quote', 'selectItem', 'setOnClose'] }],
+    ['DialogueUIManager', { methods: ['cancelDialogue', 'advance', 'chooseOption', 'closeSession'] }],
+    ['MusicManager', { methods: ['setTrack', 'tryPlay', 'releaseAudio'] }],
     ['NameplateManager', { methods: ['frameImageFor', 'portraitImageFor', 'drawFallbackFrame'] }],
     ['InventoryItemSpriteManager', { methods: ['updateBody', 'reposition', 'reveal'] }],
     ['SpriteSheetManager', { methods: ['ensureFloorLayer', 'mapResourceUrl'] }],
     ['GameCameraManager', { methods: ['applyGameplayView', 'lockedMinRadius', 'setLockedRadiusScale'] }],
-    ['ItemDefinitionManager', { methods: ['connectAndAuth'], contains: 'this.itemDefs' }],
-    ['NpcDefinitionManager', { methods: ['connectAndAuth'], contains: 'this.npcDefs' }],
-    ['SpellDefinitionManager', { methods: ['setLearnedSpells', 'getAutocastDefinition'] }],
     ['AppearanceUtils', { methods: ['configureOwnedMeshCulling', 'applyRenderOpacityToMesh'] }],
     ['BlobLoader', { methods: ['clearPendingNpcWork', 'queueHumanoidModelWarmup'] }],
-    ['HTMLUIManager', { methods: ['setToolsControls', 'setQuestDefs'] }],
     ['ScreenMask', { methods: ['setProgress', 'setStatus', 'resetProgress'] }],
-    ['ContextMenuManager', { methods: ['showContextMenu', 'hideContextMenu', 'openWorldContextMenuAt'] }],
-    ['ContextMenuItemManager', { methods: ['buildWorldContextMenuItems', 'getWorldInteractionOptionsAt'] }],
     ['TargetActionManager', { methods: ['handlePrimaryActionAt', 'pickGround', 'setGroundClickHandler'] }],
-    ['MagicSkillManager', { methods: ['setLearnedSpells', 'usesItemCost'] }],
-    ['SpellMenuManager', { methods: ['setLearnedSpells', 'getAutocastDefinition', 'applyAutocastFromServer'] }],
     ['QuestDefinitionManager', { methods: ['questStageRequirementText', 'questVarRequirementText', 'stageObjectiveText'] }],
-    ['StatsMenuManager', { methods: ['setRenderQualityControls', 'setMovementModeControls', 'applyMovementModeFromServer'] }],
-    ['GameMenuBarManager', { methods: ['setAuthToken', 'removeStaleMounts', 'setToolsControls'] }],
-    ['ExperienceManager', { methods: ['setQuestDefs', 'setQuestState'] }]
+    ['StatsMenuManager', { methods: ['setRenderQualityControls', 'setMovementModeControls', 'applyMovementModeFromServer'] }]
 ];
 
-// Define the map of all class hook signatures
+// Define the map of active client enum and lookup signatures verified against Memories of Magic bundles
 export const EnumSignatures: [string, EnumSignature][] = [
-    // Define all the statement signatures
-    ['GameWorldActions', { includes: ['attack'] }],
-    ['InventoryActions',  { includes: ['use', 'inspect', 'drop'] }],
-    ['PlayerActions', { includes: ['idle'] }],
-    ['Skills', { includes: ['hitpoints', 'woodcutting'] }],
-    ['EntityTypes', { includes: ['environment', 'item'] }],
-    ['AppearanceTypes', { includes: ['hair', 'beard'] }],
-    ['UISettings', { includes: ['uitheme'] }],
-    ['GameInterfaces', { includes: ['inventory', 'bank', 'shop'] }],
-    ['GameObjects', { includes: ['caveentrance', 'caveexit', 'oaktree'] }],
-    ['RequirementTypes', { includes: ['availableinventoryspace', 'quest', 'skill'] }],
-    ['SpellTypes', { includes: ['combat', 'status', 'inventory', 'teleport'] }],
+    ['PlayerActions', { includes: ['idle', 'walk', 'attack'] }],
+    ['Skills', { includes: ['hitpoints', 'woodcutting', 'weaponry'] }],
+    ['CombatStyles', { includes: ['accurate', 'aggressive', 'defensive', 'controlled'] }],
+    ['AppearanceTypes', { includes: ['haircolor', 'skincolor', 'eyecolor'] }],
+    ['UISettings', { includes: ['grounditemlabels', 'nameplates', 'tooltips'] }],
+    ['GameInterfaces', { includes: ['inventory', 'equipment', 'revealloot'] }],
+    ['RequirementTypes', { includes: ['queststage', 'questcompleted', 'questvar'] }],
+    ['EquipmentSlots', { includes: ['weapon', 'shield', 'head', 'body', 'legs'] }],
+    ['Runes', { includes: ['chaos', 'death', 'blood'] }],
+    ['ElementalTypes', { includes: ['arcane', 'earth', 'air'] }],
+    ['ChatChannels', { includes: ['player', 'npc', 'world', 'private'] }],
+    ['TileTypes', { includes: ['void', 'natural', 'path', 'lava'] }]
 ];
