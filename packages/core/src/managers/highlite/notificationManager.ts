@@ -46,7 +46,7 @@ export class NotificationManager {
         }
 
         const notification = new Notification('CamelKit', {
-            icon: './static/icons/icon.png',
+            icon: '/icons/icon.png',
             body: message,
         });
         notification.onclick = () => {
