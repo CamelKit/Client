@@ -1,5 +1,6 @@
 import { BrowserWindow, app } from 'electron';
 import path from 'path';
+import { getAppIconPath } from '../../icon';
 
 export async function createSettingsModal(parent : BrowserWindow) : Promise<BrowserWindow> {
     const modal = new BrowserWindow({
@@ -12,7 +13,7 @@ export async function createSettingsModal(parent : BrowserWindow) : Promise<Brow
             webSecurity: app.isPackaged, // Disable web security only in development for CORS
             
         },
-        icon: path.join(__dirname, 'icons/icon.png'),
+        icon: getAppIconPath(),
         titleBarStyle: 'hidden',
         resizable: false
     });

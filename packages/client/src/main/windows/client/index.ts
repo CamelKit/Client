@@ -46,6 +46,7 @@ function localMimeType(filePath: string): string {
     const map: Record<string, string> = {
         '.html': 'text/html', '.js': 'application/javascript',
         '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon',
+        '.svg': 'image/svg+xml',
         '.json': 'application/json', '.webm': 'video/webm',
         '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
     };
@@ -58,6 +59,7 @@ import { settingsService } from '../../modules/settingsManagement';
 import { registerDevLogin } from '../../devLogin';
 import { registerOAuthLogin, clearOAuthSession } from '../../oauthLogin';
 import { registerPluginAssetCache } from '../../pluginAssetCache';
+import { getAppIconPath } from '../../icon';
 
 // PRIMARY login: OAuth 2.0 Authorization Code + PKCE (the sanctioned EvilQuest path).
 // Silent refresh on launch; system-browser authorize only on first login.
@@ -101,9 +103,9 @@ app.on("ready", async () => {
         // renderer from disk. Using app.isPackaged here was the bug: preview is unpackaged but
         // has no Vite dev server, so it proxied to a dead localhost:5173 (ERR_CONNECTION_REFUSED).
         const devRendererUrl = process.env['ELECTRON_RENDERER_URL'];
-        const isInternalAsset = url.pathname.startsWith('/__camelkit__/') || url.pathname.startsWith('/__evillite__/');
+        const isInternalAsset = url.pathname.startsWith('/__camelkit__/') || url.pathname.startsWith('/__evillite__/') || url.pathname.startsWith('/icons/');
         if ((url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') && isInternalAsset) {
-            const filePart = url.pathname.replace(/^\/__(camelkit|evillite)__\//, '');
+            const filePart = url.pathname.replace(/^\/__(camelkit|evillite)__\//, '').replace(/^\//, '');
             if (devRendererUrl) {
                 // Dev: proxy to Vite (TypeScript transforms + HMR)
                 try {
@@ -114,15 +116,21 @@ app.on("ready", async () => {
                 }
             }
             // Built (preview or packaged): serve from the renderer output on disk.
-            const localPath = path.join(__dirname, '../renderer', filePart);
-            try {
-                const content = fs.readFileSync(localPath);
-                return new Response(content, {
-                    headers: { 'Content-Type': localMimeType(localPath), 'Access-Control-Allow-Origin': '*' }
-                });
-            } catch {
-                return new Response('CamelKit asset not found: ' + filePart, { status: 404 });
+            const localCandidates = [
+                path.join(__dirname, '../renderer', filePart),
+                path.join(__dirname, '../../static', filePart),
+            ];
+            for (const localPath of localCandidates) {
+                try {
+                    if (fs.existsSync(localPath)) {
+                        const content = fs.readFileSync(localPath);
+                        return new Response(content, {
+                            headers: { 'Content-Type': localMimeType(localPath), 'Access-Control-Allow-Origin': '*' }
+                        });
+                    }
+                } catch {}
             }
+            return new Response('CamelKit asset not found: ' + filePart, { status: 404 });
         }
 
         // Proxy Vite dev server internal paths (HMR, node_modules, source files) — dev only.
@@ -414,7 +422,7 @@ export async function createClientWindow() {
         },
         minHeight: 500,
         minWidth: 500,
-        icon: path.join(__dirname, 'icons/icon.png'),
+        icon: getAppIconPath(),
         titleBarStyle: 'hidden',
         show: true,
     });
@@ -436,7 +444,7 @@ export async function createClientWindow() {
         }
     });
 
-    mainWindow.webContents.on('zoom-changed', (event, zoomDirection) => {
+    mainWindow.webContents.on('zoom-changed', (_event, zoomDirection) => {
         if (zoomDirection === 'in') {
             mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 0.1);
         } else if (zoomDirection === 'out') {

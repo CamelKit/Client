@@ -1,12 +1,28 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { resolve } from 'path'
 
+import { cpSync, mkdirSync, existsSync } from 'fs'
+
+function copyStaticIconsPlugin() {
+  return {
+    name: 'copy-static-icons',
+    buildStart() {
+      const src = resolve(__dirname, 'static/icons')
+      const dest = resolve(__dirname, 'out/main/icons')
+      if (existsSync(src)) {
+        mkdirSync(dest, { recursive: true })
+        cpSync(src, dest, { recursive: true })
+      }
+    }
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
 
   return {
     main: {
-      plugins: [externalizeDepsPlugin()],
+      plugins: [externalizeDepsPlugin(), copyStaticIconsPlugin()],
       define: {
         // Baked at build time. Only TRUE in the canonical CamelKit/Client CI build (set in
         // build.yml from github.repository). Fork/test builds get FALSE → the auto-updater stays

@@ -13,6 +13,7 @@
 import { app, BrowserWindow, ipcMain, type WebContents } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { getAppIconPath } from '../../icon';
 
 // The detached World Map window. The World Map plugin (in the game renderer) generates a
 // self-contained interactive viewer (the same one used for the HTML export) and streams it
@@ -65,7 +66,7 @@ export function registerMapWindowIPC(): void {
                     sandbox: false,
                     webSecurity: app.isPackaged,
                 },
-                icon: path.join(__dirname, 'icons/icon.png'),
+                icon: getAppIconPath(),
                 show: false,
             });
             win.setMenu(null);

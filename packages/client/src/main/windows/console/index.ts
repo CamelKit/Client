@@ -16,6 +16,7 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { ipcMain } from 'electron';
+import { getAppIconPath } from '../../icon';
 export async function createConsoleWindow() {
     const consoleWindow = new BrowserWindow({
         width: 800,
@@ -26,7 +27,7 @@ export async function createConsoleWindow() {
             webSecurity: app.isPackaged, // Disable web security only in development for CORS
             
         },
-        icon: path.join(__dirname, 'icons/icon.png'),
+        icon: getAppIconPath(),
         titleBarStyle: 'hidden',
         show: false, // Start hidden, show when ready
     });

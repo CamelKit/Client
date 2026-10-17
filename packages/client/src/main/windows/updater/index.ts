@@ -17,6 +17,7 @@ import { ipcMain, BrowserWindow, app, shell } from 'electron';
 import log from 'electron-log';
 import * as path from 'path';
 import { settingsService } from '../../modules/settingsManagement';
+import { getAppIconPath } from '../../icon';
 
 // Baked at build time by electron.vite.config.ts (define). TRUE only in the canonical
 // CamelKit/Client CI build; FALSE in fork/test builds so they never auto-update.
@@ -63,7 +64,7 @@ export async function createUpdateWindow() {
         },
         frame: true,
         resizable: false,
-        icon: path.join(__dirname, 'icons/icon.png'),
+        icon: getAppIconPath(),
         titleBarStyle: 'hidden',
         width: 600,
         height: 400,
