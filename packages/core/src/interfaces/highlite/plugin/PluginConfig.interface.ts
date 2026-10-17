@@ -18,9 +18,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 export interface PluginConfig {
-    repository_owner: string;
-    repository_name: string;
-    asset_sha: string; // sha256 hex string of the asset content
+    // CamelKit Hub manifest properties
+    id?: number | string;
+    name?: string;
+    description?: string;
+    author?: string;
+    version?: string;
+    url?: string;
+    download_url?: string;
+    github_url?: string;
+    latest_commit_hash?: string;
+
+    // Legacy / Highlite compatibility properties
+    repository_owner?: string;
+    repository_name?: string;
+    asset_sha?: string; // sha256 hex string of the asset content
     display_name?: string;
     display_author?: string;
     display_description?: string;

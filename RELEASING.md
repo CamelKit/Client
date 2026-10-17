@@ -31,20 +31,17 @@ CI won't trigger until a PR/tag, so use these for day-to-day testing:
 
 | Command (`cd packages/client`) | What it does |
 |---|---|
-| `yarn dev` | Run from source with HMR — the fast inner loop (not a packaged build). |
-| `yarn sync:plugin` | Pull the latest World Map plugin + prebaked cache into the tree (same as CI). |
-| `yarn try` | **Build the packaged app (unpacked) and launch it** — fastest way to test the *built* client. Syncs the plugin first. |
-| `yarn dist` | Build a full installer for your OS (`.deb`/`.exe`/`.dmg`) into `dist/`, to test install. |
+| `pnpm dev` | Run from source with HMR — the fast inner loop (not a packaged build). |
+| `pnpm try` | **Build the packaged app (unpacked) and launch it** — fastest way to test the *built* client. |
+| `pnpm dist` | Build a full installer for your OS (`.deb`/`.exe`/`.dmg`) into `dist/`, to test install. |
 
 Notes:
-- `yarn try` / `yarn dist` auto-run `sync:plugin`. To point at a local plugin checkout other
-  than the `../evillite-worldmap` sibling, set `WORLDMAP_DIR=/path/to/evillite-worldmap`.
 - Each dev builds for their own OS (electron-builder targets the host platform).
-- Linux unsigned builds run with `--no-sandbox` (handled automatically by `yarn try`).
+- Linux unsigned builds run with `--no-sandbox` (handled automatically by `pnpm try`).
 
 ## Plugins
-Plugins live in their own repos (e.g. `evillite-worldmap`) and are synced in at build time.
-The Plugin Hub loads them. New plugin → new repo from the base template.
+Plugins live in their own repositories and are installed dynamically via the Plugin Hub.
+For local testing during development, place custom plugin files (`.ts`/`.js`) in `packages/client/src/renderer/client/plugins/`.
 
 ---
 

@@ -140,6 +140,12 @@ export class settingsSchema extends SettingsSchema {
                     type: SettingTypes.BOOLEAN,
                     description: "Allow the use of beta plugins in CamelKit.",
                     default: false
+                } as Field,
+                {
+                    label: "Plugin Hub API URL",
+                    type: SettingTypes.STRING,
+                    description: "Base URL for the CamelKit Plugin Hub API (default: http://localhost:8787 in development).",
+                    default: "http://localhost:8787"
                 } as Field
             ]
         },

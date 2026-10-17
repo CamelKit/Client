@@ -156,21 +156,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The World Map plugin's source of truth is its own repo. Pull BOTH the plugin
-      # source and its prebaked icon cache from there so packaged builds bundle the
-      # current plugin and ship icons instead of regenerating them at runtime.
-      - name: Sync World Map plugin + prebaked cache from repo
-        run: |
-          git clone --depth 1 https://github.com/atapifire/evillite-worldmap.git /tmp/wm || exit 0
-          cp /tmp/wm/src/WorldMapPlugin.ts packages/client/src/renderer/client/plugins/WorldMapPlugin.ts 2>/dev/null || true
-          mkdir -p packages/client/src/renderer/client/plugins/data
-          cp /tmp/wm/data/*.json packages/client/src/renderer/client/plugins/data/ 2>/dev/null || true
-
-      # Temp core plugins (until the Plugin Hub installs them) also live in their own repos.
-      - name: Sync Collection Log plugin from repo
-        run: |
-          git clone --depth 1 https://github.com/atapifire/evillite-collectionlog.git /tmp/cl || exit 0
-          cp /tmp/cl/src/CollectionLogPlugin.ts packages/client/src/renderer/client/plugins/CollectionLogPlugin.ts 2>/dev/null || true
 
       # Anti-bot guard: fail the build if client/core or any bundled plugin contains an input-fabrication vector.
       - name: Anti-bot guard (no input fabrication)
@@ -243,17 +228,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Sync World Map plugin + prebaked cache
-        run: |
-          git clone --depth 1 https://github.com/atapifire/evillite-worldmap.git /tmp/wm || exit 0
-          cp /tmp/wm/src/WorldMapPlugin.ts packages/client/src/renderer/client/plugins/WorldMapPlugin.ts 2>/dev/null || true
-          mkdir -p packages/client/src/renderer/client/plugins/data
-          cp /tmp/wm/data/*.json packages/client/src/renderer/client/plugins/data/ 2>/dev/null || true
-
-      - name: Sync Collection Log plugin
-        run: |
-          git clone --depth 1 https://github.com/atapifire/evillite-collectionlog.git /tmp/cl || exit 0
-          cp /tmp/cl/src/CollectionLogPlugin.ts packages/client/src/renderer/client/plugins/CollectionLogPlugin.ts 2>/dev/null || true
 
       - name: Anti-bot guard (no input fabrication)
         run: node scripts/guard-input-fabrication.mjs

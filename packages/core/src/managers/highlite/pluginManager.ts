@@ -23,9 +23,8 @@ import { PanelManager } from './panelManager';
 import { DatabaseManager } from './databaseManager';
 import { SettingsManager } from './settingsManager';
 
-// Highlite mirror endpoints
-const HIGHLITE_MANIFEST_URL = 'https://www.ryelite.org/api/plugins/manifest.json';
-const HIGHLITE_MIRROR_BASE = 'https://www.ryelite.org/api/plugins';
+// CamelKit Hub API endpoints
+export const DEFAULT_HUB_API_URL = 'http://localhost:8787';
 
 export interface ManagedPlugin {
     config: PluginConfig | undefined;
@@ -124,6 +123,23 @@ export class PluginManager {
         searchWrapper.appendChild(this.searchInput);
         toolbar.appendChild(searchWrapper);
 
+        const refreshBtn = document.createElement('button');
+        refreshBtn.textContent = '↻';
+        refreshBtn.title = 'Refresh Plugin Hub';
+        this.styleSecondaryButton(refreshBtn);
+        refreshBtn.style.padding = '8px 12px';
+        refreshBtn.style.fontSize = '16px';
+        refreshBtn.style.cursor = 'pointer';
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            try {
+                await this.refreshHub();
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        });
+        toolbar.appendChild(refreshBtn);
+
         // Container for plugin cards
         this.listContainer = document.createElement('div');
         this.listContainer.style.display = 'flex';
@@ -145,15 +161,107 @@ export class PluginManager {
         await this.populatePluginHub();
     }
 
+    public async getHubApiUrl(): Promise<string> {
+        let configured: any;
+        try {
+            configured = await (window as any).settings?.getByName?.('Plugin Hub API URL');
+        } catch {
+            // ignore
+        }
+        if (typeof configured === 'string' && configured.trim().length > 0) {
+            return configured.trim().replace(/\/$/, '');
+        }
+        const envUrl = (typeof process !== 'undefined' && process.env?.CAMELKIT_HUB_URL) ||
+            ((import.meta as any)?.env?.VITE_HUB_URL);
+        if (typeof envUrl === 'string' && envUrl.trim().length > 0) {
+            return envUrl.trim().replace(/\/$/, '');
+        }
+        return DEFAULT_HUB_API_URL;
+    }
+
+    public getPluginKey(config?: PluginConfig): string {
+        if (!config) return '';
+        return String(config.name ?? config.display_name ?? config.repository_name ?? (config.id !== undefined ? `plugin-${config.id}` : 'unknown'));
+    }
+
+    public getPluginTitle(config: PluginConfig): string {
+        return config.name ?? config.display_name ?? config.repository_name ?? 'Unknown Plugin';
+    }
+
+    public getPluginAuthor(config: PluginConfig): string {
+        return config.author ?? config.display_author ?? config.repository_owner ?? 'Unknown';
+    }
+
+    public getPluginDescription(config: PluginConfig): string {
+        return config.description ?? config.display_description ?? 'No description provided.';
+    }
+
+    public getPluginVersion(config: PluginConfig): string {
+        if (config.version) return config.version.startsWith('v') ? config.version : `v${config.version}`;
+        if (config.latest_commit_hash) return `v${this.shortSha(config.latest_commit_hash)}`;
+        if (config.asset_sha) return `v${this.shortSha(config.asset_sha)}`;
+        return 'v1.0.0';
+    }
+
+    public isPluginUpToDate(installed?: PluginConfig, latest?: PluginConfig): boolean {
+        if (!installed || !latest) return false;
+        const instVer = (installed.version ?? installed.latest_commit_hash ?? installed.asset_sha ?? '').toLowerCase();
+        const latestVer = (latest.version ?? latest.latest_commit_hash ?? latest.asset_sha ?? '').toLowerCase();
+        return Boolean(instVer && latestVer && instVer === latestVer);
+    }
+
+    public getPluginGithubUrl(config: PluginConfig): string | null {
+        if (config.github_url) return config.github_url;
+        if (config.repository_owner && config.repository_name) {
+            return `https://github.com/${config.repository_owner}/${config.repository_name}`;
+        }
+        return null;
+    }
+
+    public async refreshHub(): Promise<void> {
+        const freshConfigs = await this.obtainPluginConfigs();
+        for (const config of freshConfigs) {
+            const key = this.getPluginKey(config);
+            const existing = this.managedPlugins.find((p) => this.getPluginKey(p.config) === key);
+            if (existing) {
+                existing.config = config;
+            } else {
+                this.managedPlugins.push({
+                    config,
+                    class: undefined,
+                    instance: undefined,
+                });
+            }
+        }
+        await this.populatePluginHub();
+    }
+
     private async obtainPluginConfigs(): Promise<PluginConfig[]> {
         const pluginConfigs: PluginConfig[] = [];
+        const baseUrl = await this.getHubApiUrl();
+        const manifestUrl = `${baseUrl}/manifest.json`;
+
         try {
-            const res = await fetch(HIGHLITE_MANIFEST_URL, { cache: 'no-cache' });
-            if (!res.ok) throw new Error(`Manifest request failed: ${res.status}`);
+            console.log(`[CamelKit] Fetching plugin manifest from ${manifestUrl}...`);
+            const res = await fetch(manifestUrl, { cache: 'no-cache' });
+            if (!res.ok) throw new Error(`Manifest request failed (${res.status})`);
             const manifest = await res.json();
-            for (const configuration of manifest) pluginConfigs.push(configuration as PluginConfig);
+            if (Array.isArray(manifest)) {
+                for (const configuration of manifest) {
+                    if (configuration && typeof configuration === 'object') {
+                        pluginConfigs.push(configuration as PluginConfig);
+                    }
+                }
+            } else if (manifest && typeof manifest === 'object' && Array.isArray((manifest as any).plugins)) {
+                for (const configuration of (manifest as any).plugins) {
+                    if (configuration && typeof configuration === 'object') {
+                        pluginConfigs.push(configuration as PluginConfig);
+                    }
+                }
+            }
+            console.log(`[CamelKit] Retrieved ${pluginConfigs.length} plugin(s) from Plugin Hub.`);
         } catch (e) {
-            console.error('[Highlite] Failed to fetch plugin configs from mirror', e);
+            console.warn(`[CamelKit] Failed to fetch plugin configs from ${manifestUrl}:`, e);
         }
         return pluginConfigs;
     }
@@ -166,7 +274,7 @@ export class PluginManager {
         const withConfig = this.managedPlugins.filter((p) => p.config);
         if (withConfig.length === 0) {
             const emptyMessage = document.createElement('div');
-            emptyMessage.textContent = 'No plugins available.';
+            emptyMessage.textContent = 'No plugins available from the Plugin Hub.';
             emptyMessage.style.textAlign = 'center';
             emptyMessage.style.color = 'var(--theme-text-muted)';
             emptyMessage.style.fontStyle = 'italic';
@@ -181,14 +289,16 @@ export class PluginManager {
 
         const filter = this.currentFilter;
         const filtered = withConfig.filter((p) => {
-            const name = (p!.config!.display_name ?? p!.config!.repository_name ?? '').toLowerCase();
-            return !filter || name.includes(filter);
+            const name = (p!.config!.name ?? p!.config!.display_name ?? p!.config!.repository_name ?? '').toLowerCase();
+            const author = (p!.config!.author ?? p!.config!.display_author ?? p!.config!.repository_owner ?? '').toLowerCase();
+            const description = (p!.config!.description ?? p!.config!.display_description ?? '').toLowerCase();
+            return !filter || name.includes(filter) || author.includes(filter) || description.includes(filter);
         });
 
         // Default alphabetical sort (case-insensitive) by plugin display/repo name
         const sorted = filtered.sort((a, b) => {
-            const an = (a!.config!.display_name ?? a!.config!.repository_name ?? '').toString();
-            const bn = (b!.config!.display_name ?? b!.config!.repository_name ?? '').toString();
+            const an = this.getPluginTitle(a!.config!).toString();
+            const bn = this.getPluginTitle(b!.config!).toString();
             return an.localeCompare(bn, undefined, { sensitivity: 'base' });
         });
 
@@ -209,6 +319,9 @@ export class PluginManager {
 
         for (const plugin of sorted) {
             if (!plugin.config) continue;
+            const config = plugin.config;
+            const pluginKey = this.getPluginKey(config);
+
             const card = document.createElement('div');
             card.style.border = '1px solid var(--theme-border)';
             card.style.borderRadius = '8px';
@@ -220,7 +333,7 @@ export class PluginManager {
             card.style.transition = 'all 0.2s ease';
 
             const title = document.createElement('h3');
-            title.textContent = plugin.config.display_name ?? plugin.config.repository_name;
+            title.textContent = this.getPluginTitle(config);
             title.style.margin = '0 0 4px 0';
             title.style.fontSize = '16px';
             title.style.fontFamily = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
@@ -228,7 +341,7 @@ export class PluginManager {
             title.style.color = 'var(--theme-text-primary)';
 
             const author = document.createElement('p');
-            author.textContent = `By ${plugin.config.display_author ?? plugin.config.repository_owner}`;
+            author.textContent = `By ${this.getPluginAuthor(config)}`;
             author.style.margin = '0 0 8px 0';
             author.style.fontStyle = 'italic';
             author.style.fontSize = '12px';
@@ -237,16 +350,16 @@ export class PluginManager {
             author.style.color = 'var(--theme-text-muted)';
 
             const description = document.createElement('p');
-            description.textContent = plugin.config.display_description ?? 'No description provided.';
+            description.textContent = this.getPluginDescription(config);
             description.style.margin = '0 0 12px 0';
             description.style.fontSize = '14px';
             description.style.fontFamily = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
             description.style.fontWeight = '400';
             description.style.color = 'var(--theme-text-secondary)';
 
-            // Version line (shortened sha)
+            // Version line
             const version = document.createElement('p');
-            version.textContent = `Version: ${this.shortSha(plugin.config.asset_sha)}`;
+            version.textContent = `Version: ${this.getPluginVersion(config)}`;
             version.style.margin = '0 0 12px 0';
             version.style.fontSize = '12px';
             version.style.fontFamily = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
@@ -274,17 +387,19 @@ export class PluginManager {
             const githubButton = document.createElement('button');
             githubButton.textContent = 'View on GitHub';
             this.styleSecondaryButton(githubButton);
-            githubButton.onclick = () => {
-                const url = `https://github.com/${plugin.config!.repository_owner}/${plugin.config!.repository_name}`;
-                window.open(url, '_blank');
-            };
+            const githubUrl = this.getPluginGithubUrl(config);
+            if (githubUrl) {
+                githubButton.onclick = () => {
+                    window.open(githubUrl, '_blank');
+                };
+            }
 
             installBtn.onclick = async () => {
                 installBtn.disabled = true;
                 try {
                     if (!plugin.config) return;
                     const matchingAssetUrl = await this.downloadAndVerifyAsset(plugin.config);
-                    if (!matchingAssetUrl) throw new Error(`No asset matched SHA: ${plugin.config.asset_sha}`);
+                    if (!matchingAssetUrl) throw new Error(`Failed to load asset for ${this.getPluginTitle(plugin.config)}`);
                     const pluginModule = await import(/* @vite-ignore */ matchingAssetUrl);
                     const PluginClass = pluginModule.default;
                     if (typeof PluginClass !== 'function') throw new Error('Default export is not a valid plugin class');
@@ -300,7 +415,7 @@ export class PluginManager {
                             config: plugin.config,
                             blob: plugin.blob!,
                         },
-                        plugin.config.display_name ?? plugin.config.repository_name
+                        pluginKey
                     );
 
                     await this.settingsManager.refresh();
@@ -312,7 +427,7 @@ export class PluginManager {
                     updateButton.style.display = 'none';
                     actionsRow.appendChild(uninstallButton);
                 } catch (error) {
-                    console.error(`[Highlite] Failed to install plugin:`, error);
+                    console.error(`[CamelKit] Failed to install plugin:`, error);
                     installBtn.textContent = 'Failed';
                     installBtn.classList.add('error');
                 } finally {
@@ -323,10 +438,7 @@ export class PluginManager {
             uninstallButton.onclick = async () => {
                 try {
                     if (!plugin.config) return;
-                    await this.databaseManager.database?.delete(
-                        'plugins',
-                        plugin.config.display_name ?? plugin.config.repository_name
-                    );
+                    await this.databaseManager.database?.delete('plugins', pluginKey);
                     if (plugin.class) {
                         const installedPlugin = this.findPluginByClass(plugin.class);
                         if (installedPlugin) {
@@ -345,7 +457,7 @@ export class PluginManager {
                     updateButton.style.display = 'none';
                     actionsRow.appendChild(installBtn);
                 } catch (error) {
-                    console.error(`[Highlite] Failed to uninstall plugin:`, error);
+                    console.error(`[CamelKit] Failed to uninstall plugin:`, error);
                     uninstallButton.textContent = 'Failed';
                 }
             };
@@ -355,7 +467,7 @@ export class PluginManager {
                 try {
                     if (!plugin.config) return;
                     const matchingAssetUrl = await this.downloadAndVerifyAsset(plugin.config);
-                    if (!matchingAssetUrl) throw new Error(`No asset matched SHA: ${plugin.config.asset_sha}`);
+                    if (!matchingAssetUrl) throw new Error(`Failed to load asset for ${this.getPluginTitle(plugin.config)}`);
                     const pluginModule = await import(/* @vite-ignore */ matchingAssetUrl);
                     const PluginClass = pluginModule.default;
                     if (typeof PluginClass !== 'function') throw new Error('Default export is not a valid plugin class');
@@ -373,15 +485,15 @@ export class PluginManager {
                             config: plugin.config,
                             blob: plugin.blob!,
                         },
-                        plugin.config.display_name ?? plugin.config.repository_name
+                        pluginKey
                     );
                     // Update UI state
                     plugin.installedConfig = plugin.config;
-                    version.textContent = `Version: ${this.shortSha(plugin.config.asset_sha)}`;
+                    version.textContent = `Version: ${this.getPluginVersion(plugin.config)}`;
                     updateButton.style.display = 'none';
                     await this.settingsManager.refresh();
                 } catch (error) {
-                    console.error(`[Highlite] Failed to update plugin:`, error);
+                    console.error(`[CamelKit] Failed to update plugin:`, error);
                     updateButton.textContent = 'Failed';
                 } finally {
                     updateButton.disabled = false;
@@ -396,14 +508,16 @@ export class PluginManager {
             actionsRow.style.display = 'flex';
             actionsRow.style.gap = '8px';
             actionsRow.style.flexWrap = 'wrap';
-            actionsRow.appendChild(githubButton);
+            if (githubUrl) {
+                actionsRow.appendChild(githubButton);
+            }
             // On first render, sync with DB; afterwards rely on cached state
             const isInstalled = this.didInitialSync ? plugin.blob : await this.syncPluginState(plugin.config);
             if (isInstalled) {
                 plugin.blob = isInstalled;
-                // Show uninstall; and show update if installed sha differs from latest
+                // Show uninstall; and show update if installed version differs from latest
                 actionsRow.appendChild(uninstallButton);
-                const upToDate = plugin.installedConfig && plugin.installedConfig.asset_sha.toLowerCase() === plugin.config.asset_sha.toLowerCase();
+                const upToDate = this.isPluginUpToDate(plugin.installedConfig, plugin.config);
                 updateButton.style.display = upToDate ? 'none' : 'inline-flex';
                 if (!upToDate) actionsRow.appendChild(updateButton);
             } else {
@@ -417,18 +531,16 @@ export class PluginManager {
 
     private async syncPluginState(plugin: PluginConfig): Promise<Blob | undefined> {
         if (!this.databaseManager.database) return undefined; // DB guard
-        const installedPlugin = await this.databaseManager.database.get(
-            'plugins',
-            plugin.display_name ?? plugin.repository_name
-        );
+        const key = this.getPluginKey(plugin);
+        const installedPlugin = await this.databaseManager.database.get('plugins', key);
         if (installedPlugin) {
             const blob = installedPlugin.blob as Blob;
             const url = URL.createObjectURL(blob);
             try {
                 const pluginModule = await import(url);
                 const pluginClass = pluginModule.default;
-                // Associate to managed plugin by name
-                const managed = this.managedPlugins.find((mp) => (mp.config?.display_name ?? mp.config?.repository_name) === (plugin.display_name ?? plugin.repository_name));
+                // Associate to managed plugin by key
+                const managed = this.managedPlugins.find((mp) => this.getPluginKey(mp.config) === key);
                 if (managed) {
                     managed.class = pluginClass;
                     managed.blob = blob;
@@ -437,7 +549,7 @@ export class PluginManager {
                 }
                 this.registerPlugin(pluginClass);
             } catch (e) {
-                console.error('[Highlite] Failed to load installed plugin', e);
+                console.error('[CamelKit] Failed to load installed plugin', e);
                 URL.revokeObjectURL(url);
                 return undefined;
             }
@@ -456,19 +568,34 @@ export class PluginManager {
         // If DB is not ready, fail fast
         if (!this.databaseManager.database) throw new Error('Database not initialized');
 
-        // Download exclusively from Highlite mirror and verify against manifest sha
-        const mirrorUrl = `${HIGHLITE_MIRROR_BASE}/${config.repository_owner}/${config.display_name ?? config.repository_name}/`;
-        const resp = await fetch(mirrorUrl, { headers: { Accept: 'application/octet-stream' }, cache: 'no-cache' });
-        if (!resp.ok) throw new Error(`Mirror download failed (${resp.status})`);
+        let downloadUrl = config.download_url ?? config.url;
+        if (!downloadUrl && config.repository_owner && (config.display_name ?? config.repository_name)) {
+            const baseUrl = await this.getHubApiUrl();
+            downloadUrl = `${baseUrl}/api/plugins/${config.repository_owner}/${config.display_name ?? config.repository_name}/`;
+        }
+        if (!downloadUrl) {
+            throw new Error(`No download URL available for plugin: ${this.getPluginTitle(config)}`);
+        }
+
+        // If URL is relative, resolve against Hub API base URL
+        if (downloadUrl.startsWith('/')) {
+            const baseUrl = await this.getHubApiUrl();
+            downloadUrl = `${baseUrl}${downloadUrl}`;
+        }
+
+        console.log(`[CamelKit] Downloading plugin from ${downloadUrl}...`);
+        const resp = await fetch(downloadUrl, { cache: 'no-cache' });
+        if (!resp.ok) throw new Error(`Plugin download failed (${resp.status}): ${downloadUrl}`);
         const buffer = await resp.arrayBuffer();
         if (config.asset_sha) {
             const hex = "sha256:" + await this.sha256Hex(buffer);
             const expected = (config.asset_sha ?? '').toLowerCase();
-            if (hex !== expected) throw new Error(`[Highlite] Mirror asset sha mismatch for ${config.repository_name}. expected=${expected} actual=${hex}`);
+            if (hex !== expected) throw new Error(`[CamelKit] Asset sha mismatch for ${this.getPluginTitle(config)}. expected=${expected} actual=${hex}`);
         }
         const blob = new Blob([buffer], { type: 'application/javascript' });
         const url = URL.createObjectURL(blob);
-        const managed = this.managedPlugins.find((mp) => (mp.config?.display_name ?? mp.config?.repository_name) === (config.display_name ?? config.repository_name));
+        const key = this.getPluginKey(config);
+        const managed = this.managedPlugins.find((mp) => this.getPluginKey(mp.config) === key);
         if (managed) {
             managed.blob = blob;
             managed.url = url;
