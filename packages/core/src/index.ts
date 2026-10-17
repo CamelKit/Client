@@ -60,4 +60,5 @@ export * from './utilities/abbreviateValue';
 export * from './utilities/lookupUtils';
 export * from './utilities/resources';
 export * from './utilities/pluginAssetCache';
+export * from './utilities/modelIconCache';
 export * from './utilities/resolveUsername';
