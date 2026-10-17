@@ -6,6 +6,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "start": "turbo start",
+    "logs": "tail -f logs/client.log",
     "format": "turbo format",
     "format:check": "turbo format:check",
     "format:fix": "turbo format:fix"
