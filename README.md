@@ -17,6 +17,7 @@ An open-source, RuneLite-inspired desktop client for the game **EvilQuest** ([Me
   - [Unified Shared Logging](#unified-shared-logging)
   - [Live Chrome DevTools Protocol (CDP)](#live-chrome-devtools-protocol-cdp)
 - [Repository Scripts](#repository-scripts)
+- [Releasing & Updating @camelkit/core](#releasing--updating-camelkitcore)
 - [Troubleshooting & Gotchas](#troubleshooting--gotchas)
 
 ---
@@ -170,6 +171,7 @@ Run from the root of the repository:
 | :--- | :--- |
 | `pnpm dev` | Starts Turborepo dev pipeline across all packages |
 | `pnpm build` | Compiles `@camelkit/core` and builds `@camelkit/client` artifacts (`out/`) |
+| `pnpm release:core` | Bumps version, runs guards, commits, and tags `@camelkit/core` release |
 | `pnpm logs` | Tails `logs/client.log` in real time |
 | `pnpm format` | Formats all code with Prettier |
 | `pnpm format:check` | Verifies code formatting |
@@ -185,6 +187,72 @@ pnpm -F @camelkit/client build:linux   # Builds Linux AppImage
 pnpm -F @camelkit/client build:mac     # Builds macOS universal DMG
 pnpm -F @camelkit/client build:unpack  # Unpacked directory without installer
 ```
+
+---
+
+## Releasing & Updating @camelkit/core
+
+The [`@camelkit/core`](https://www.npmjs.com/package/@camelkit/core) library provides the TypeScript SDK, class signatures, Reflector engine, and lifecycle managers consumed by all CamelKit plugins.
+
+### 1. Bumping & Cutting a Core Release
+
+From the root of the `Client` repository, run the release helper:
+
+```bash
+# Bump patch version (e.g. 0.0.1 -> 0.0.2)
+pnpm release:core patch
+
+# Bump minor version (e.g. 0.0.1 -> 0.1.0)
+pnpm release:core minor
+
+# Bump major version (e.g. 0.0.1 -> 1.0.0)
+pnpm release:core major
+
+# Or set an explicit custom version
+pnpm release:core 0.0.2-beta.1
+```
+
+The script automatically:
+1. Runs anti-bot input fabrication quality guards (`scripts/guard-input-fabrication.mjs`).
+2. Builds declaration files and esbuild output (`pnpm --filter @camelkit/core build`).
+3. Updates version in `packages/core/package.json`.
+4. Creates a Git release commit and annotated tag (`core-v<version>`).
+
+### 2. Publishing to NPM via GitHub Actions
+
+Push the commit and tag to GitHub to trigger automated NPM publishing via [`.github/workflows/publish-core.yml`](.github/workflows/publish-core.yml):
+
+```bash
+# Push branch and the new core tag
+git push origin dev
+git push origin core-v0.0.2
+
+# Or push dev and all tags in one command:
+git push origin dev --tags
+```
+
+The CI workflow automatically:
+- Runs quality guards and builds the package.
+- Authenticates with NPM using **OIDC Trusted Publishing** (cryptographically signed, no 2FA prompts).
+- Signs and publishes the package to public [NPM](https://www.npmjs.com/package/@camelkit/core) with Sigstore provenance.
+- Generates a GitHub Release with release notes.
+
+### 3. Consuming Updates in Plugins
+
+In plugin repositories (such as `Plugin-Vault` or plugins created from `Plugin-Example`):
+
+```bash
+# Using Yarn
+yarn add -D @camelkit/core@latest
+
+# Using npm
+npm install --save-dev @camelkit/core@latest
+
+# Using pnpm
+pnpm add -D @camelkit/core@latest
+```
+
+*(Note: Plugins generated from `Plugin-Example` have Dependabot configured to automatically open weekly pull requests whenever a new `@camelkit/core` version is released).*
 
 ---
 
