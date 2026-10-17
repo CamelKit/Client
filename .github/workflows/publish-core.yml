@@ -59,7 +59,13 @@ jobs:
 
       - name: Publish to NPM (Trusted Publishing via OIDC)
         working-directory: packages/core
-        run: pnpm publish --access public --no-git-checks
+        run: |
+          PUBLISHED_VERSION=$(npm view @camelkit/core version 2>/dev/null || echo "")
+          if [ "$PUBLISHED_VERSION" = "${{ steps.pkg.outputs.core_version }}" ]; then
+            echo "::notice::@camelkit/core@${{ steps.pkg.outputs.core_version }} is already published to NPM. Skipping upload."
+          else
+            pnpm publish --access public --no-git-checks
+          fi
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
