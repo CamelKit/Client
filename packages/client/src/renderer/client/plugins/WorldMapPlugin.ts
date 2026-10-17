@@ -2480,11 +2480,40 @@ resize();fit();})();</script></body></html>`;
             const gm = this.gm;
             if (!gm?.scene) { this.bjsState = 'idle'; return; } // not in game yet — retry later
             let url = '';
-            for (const el of Array.from(document.querySelectorAll('link[rel="modulepreload"],script[src]'))) {
+            for (const el of Array.from(document.querySelectorAll('link, script'))) {
                 const src = (el as any).href || (el as any).src || '';
                 if (/babylon-core[-.][A-Za-z0-9_]+\.js/.test(src)) { url = src; break; }
             }
-            if (!url) { this.bjsState = 'failed'; this.warn('icons: babylon-core URL not found'); return; }
+            if (!url && typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function') {
+                const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+                for (const entry of entries) {
+                    if (/babylon-core[-.][A-Za-z0-9_]+\.js/.test(entry.name)) {
+                        url = entry.name;
+                        break;
+                    }
+                }
+            }
+            if (!url && Array.isArray((window as any).__eqSourceModules)) {
+                for (const mod of (window as any).__eqSourceModules) {
+                    if (typeof mod === 'string') {
+                        const m = mod.match(/["']([^"']*babylon-core[^"']*\.js)["']/);
+                        if (m) {
+                            const raw = m[1].replace(/^\.\//, '');
+                            url = raw.startsWith('http')
+                                ? raw
+                                : raw.startsWith('/')
+                                    ? `${location.origin}${raw}`
+                                    : `${location.origin}/assets/${raw.replace(/^assets\//, '')}`;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!url) {
+                this.bjsState = 'idle';
+                this.warn('icons: babylon-core URL not yet available (will retry when module arrives)');
+                return;
+            }
             const ns: any = await import(/* @vite-ignore */ url);
             const vals = Object.values(ns) as any[];
             const SceneLoader = vals.find(v => v && typeof v.ImportMeshAsync === 'function');

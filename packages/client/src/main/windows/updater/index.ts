@@ -14,16 +14,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { ipcMain, BrowserWindow, app, shell } from 'electron';
-import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import path from 'path';
+import * as path from 'path';
 import { settingsService } from '../../modules/settingsManagement';
 
 // Baked at build time by electron.vite.config.ts (define). TRUE only in the canonical
 // CamelC0re/Client CI build; FALSE in fork/test builds so they never auto-update.
 declare const __EVILLITE_CANONICAL__: boolean;
 
-async function configureAutoUpdater() {
+async function configureAutoUpdater(autoUpdater: any) {
     autoUpdater.autoDownload = false; // Disable auto download to control it manually
     await settingsService.load();
 
@@ -44,7 +43,17 @@ async function configureAutoUpdater() {
 
 
 export async function createUpdateWindow() {
-    await configureAutoUpdater();
+    let autoUpdater: any = null;
+    if (app.isPackaged) {
+        try {
+            const updaterModule = await import('electron-updater');
+            autoUpdater = updaterModule.autoUpdater;
+            await configureAutoUpdater(autoUpdater);
+        } catch (e) {
+            log.error('[Updater] Failed to load electron-updater:', e);
+        }
+    }
+
     const updateWindow = new BrowserWindow({
         title: 'Updating EvilLite...',
         webPreferences: {
@@ -85,7 +94,7 @@ export async function createUpdateWindow() {
     };
 
     updateWindow.on('ready-to-show', async () => {
-        if (!app.isPackaged) {
+        if (!app.isPackaged || !autoUpdater) {
             ipcMain.emit('delay-update');
         } else if (!__EVILLITE_CANONICAL__) {
             // Fork / test build: never auto-update. Devs grab these to try a change before its PR
@@ -103,43 +112,45 @@ export async function createUpdateWindow() {
         }
     });
 
-    autoUpdater.on('download-progress', progressObj => {
-        log.info('Download progress:', progressObj.percent);
-        updateWindow.webContents.send('download-progress', progressObj.percent);
-    });
+    if (autoUpdater) {
+        autoUpdater.on('download-progress', progressObj => {
+            log.info('Download progress:', progressObj.percent);
+            updateWindow.webContents.send('download-progress', progressObj.percent);
+        });
 
-    autoUpdater.on('update-downloaded', async () => {
-        log.info('Update downloaded');
-        updateWindow.webContents.send('update-downloaded');
-    });
+        autoUpdater.on('update-downloaded', async () => {
+            log.info('Update downloaded');
+            updateWindow.webContents.send('update-downloaded');
+        });
 
-    autoUpdater.on('update-available', async updateInfo => {
-        log.info('Update available:', updateInfo.releaseName);
-        // An update is pending the user's choice — don't auto-proceed on the timeout.
-        clearUpdateTimeout();
-        updateWindow.webContents.send('update-available', updateInfo);
-    });
+        autoUpdater.on('update-available', async updateInfo => {
+            log.info('Update available:', updateInfo.releaseName);
+            // An update is pending the user's choice — don't auto-proceed on the timeout.
+            clearUpdateTimeout();
+            updateWindow.webContents.send('update-available', updateInfo);
+        });
 
-    autoUpdater.on('update-not-available', async () => {
-        log.info('Update not available');
-        proceedToClient('no update available');
-    });
+        autoUpdater.on('update-not-available', async () => {
+            log.info('Update not available');
+            proceedToClient('no update available');
+        });
 
-    // No feed configured / network failure / signature error — never hang.
-    autoUpdater.on('error', err => {
-        log.error('[Updater] error:', err);
-        proceedToClient('update check error');
-    });
+        // No feed configured / network failure / signature error — never hang.
+        autoUpdater.on('error', err => {
+            log.error('[Updater] error:', err);
+            proceedToClient('update check error');
+        });
 
-    ipcMain.once('install-update', async () => {
-        log.info('Installing update...');
-        autoUpdater.quitAndInstall();
-    });
+        ipcMain.once('install-update', async () => {
+            log.info('Installing update...');
+            autoUpdater.quitAndInstall();
+        });
 
-    ipcMain.once('download-update', async () => {
-        log.info('Downloading update...');
-        autoUpdater.downloadUpdate();
-    });
+        ipcMain.once('download-update', async () => {
+            log.info('Downloading update...');
+            autoUpdater.downloadUpdate();
+        });
+    }
 
     ipcMain.once('delay-update', async () => {
         log.info('Update delayed');

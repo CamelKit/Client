@@ -16,6 +16,7 @@
 import { app, BrowserWindow, ipcMain, shell, session, protocol, net } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import log from 'electron-log';
 
 /**
  * Builds one consistent browser identity used by the JS fingerprint AND every network
@@ -227,17 +228,34 @@ app.on("ready", async () => {
                     newHeaders.delete('Last-Modified');
                     let body = await response.text();
 
-                    const classRegex = /\bclass\s+([A-Za-z0-9_]+)/g;
-                    const classes: string[] = [];
+                    const JS_RESERVED = new Set([
+                        'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+                        'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'function',
+                        'if', 'import', 'in', 'instanceof', 'new', 'return', 'super', 'switch',
+                        'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+                        'enum', 'implements', 'interface', 'let', 'package', 'private', 'protected',
+                        'public', 'static', 'await', 'null', 'true', 'false', 'NaN', 'undefined'
+                    ]);
+
+                    const symbols = new Set<string>();
                     let match;
+                    const classRegex = /\bclass\s+([A-Za-z0-9_$]+)/g;
                     while ((match = classRegex.exec(body)) !== null) {
-                        classes.push(match[1]);
+                        if (!JS_RESERVED.has(match[1])) symbols.add(match[1]);
+                    }
+                    const objRegex = /(?:const|let|var|,)\s*([A-Za-z0-9_$]+)\s*=\s*[\{\[]/g;
+                    while ((match = objRegex.exec(body)) !== null) {
+                        if (!JS_RESERVED.has(match[1])) symbols.add(match[1]);
+                    }
+                    const enumRegex = /\b([A-Za-z0-9_$]+)\s*\|\|\s*\(\1\s*=\s*\{\}\)/g;
+                    while ((match = enumRegex.exec(body)) !== null) {
+                        if (!JS_RESERVED.has(match[1])) symbols.add(match[1]);
                     }
 
                     let exposeCode = `\nif (!document.client) document.client = new Map();\n`;
-                    for (const cls of classes) {
-                        exposeCode += `try { document.client.set('${cls}', ${cls}); } catch(e){}\n`;
-                    }
+                    symbols.forEach((sym) => {
+                        exposeCode += `try { if (typeof ${sym} !== 'undefined') { const _c = document.client.get('${sym}'); if (!_c || (typeof ${sym} === 'function' && ${sym}.prototype)) document.client.set('${sym}', ${sym}); } } catch(e){}\n`;
+                    });
                     exposeCode += `if (!window.__eqSourceCode) window.__eqSourceCode = "";\n`;
                     exposeCode += `window.__eqSourceCode += ${JSON.stringify(body + "\n")};\n`;
                     // Also keep each module body separately. Minified ESM bundles reuse
@@ -425,6 +443,7 @@ export async function createClientWindow() {
     });
 
     mainWindow.webContents.on('console-message', (event) => {
+        log.info(`[Renderer:${event.level}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
         ipcMain.emit('add-console-message', {
             level: event.level,
             text: event.message,

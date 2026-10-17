@@ -21,10 +21,23 @@ import { createClientWindow } from './windows/client';
 import log from 'electron-log';
 import registerScreenshotIPC from './modules/screenshotManagement/index';
 import { registerMapWindowIPC } from './windows/mapWindow/index';
+import { resolve, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 log.initialize({ spyRendererConsole: true });
 log.transports.console.level = 'info';
 log.transports.file.level = 'debug';
+
+// Store logs directly in the shared workspace repository logs/ folder so the Linux VM has full, real-time logging
+const repoRoot = resolve(__dirname, '../../../../');
+const logsDir = join(repoRoot, 'logs');
+if (!existsSync(logsDir)) {
+    try { mkdirSync(logsDir, { recursive: true }); } catch (e) {}
+}
+log.transports.file.resolvePathFn = () => join(logsDir, 'client.log');
+
+process.on('uncaughtException', (err) => log.error('[UncaughtException]', err));
+process.on('unhandledRejection', (reason) => log.error('[UnhandledRejection]', reason));
 
 // Remove Electron's automation fingerprint so reCAPTCHA scores us as a real browser
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
@@ -37,9 +50,9 @@ app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 // — letting an attacker drive the game programmatically straight past the server-side
 // anti-bot check. A release build must never open this port, regardless of env. See
 // docs/anti-bot.md.
-if (!app.isPackaged && process.env.EQ_DEBUG === '1') {
+if (!app.isPackaged && (process.env.EQ_DEBUG === '1' || process.env.EQ_REMOTE_DEBUG === '1')) {
     app.commandLine.appendSwitch('remote-debugging-port', '9222');
-    app.commandLine.appendSwitch('remote-allow-origins', 'http://localhost:9222');
+    app.commandLine.appendSwitch('remote-allow-origins', '*');
 }
 
 // Dev-only GPU enablement (EQ_GPU=1). On this dev box, launching through Xwayland
