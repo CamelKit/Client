@@ -144,8 +144,8 @@ export class settingsSchema extends SettingsSchema {
                 {
                     label: "Plugin Hub API URL",
                     type: SettingTypes.STRING,
-                    description: "Base URL for the CamelKit Plugin Hub API (default: http://localhost:8787 in development).",
-                    default: "http://localhost:8787"
+                    description: "Base URL for the CamelKit Plugin Hub API (default: https://api.camelkit.dev).",
+                    default: "https://api.camelkit.dev"
                 } as Field
             ]
         },

@@ -24,7 +24,7 @@ import { DatabaseManager } from './databaseManager';
 import { SettingsManager } from './settingsManager';
 
 // CamelKit Hub API endpoints
-export const DEFAULT_HUB_API_URL = 'http://localhost:8787';
+export const DEFAULT_HUB_API_URL = 'https://api.camelkit.dev';
 
 export interface ManagedPlugin {
     config: PluginConfig | undefined;
