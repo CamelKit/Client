@@ -10,7 +10,9 @@
     "format": "turbo format",
     "format:check": "turbo format:check",
     "format:fix": "turbo format:fix",
-    "release:core": "node scripts/release-core.mjs"
+    "release:core": "node scripts/release-core.mjs",
+    "release:client": "node scripts/release-client.mjs",
+    "bump:client": "node scripts/release-client.mjs --bump-only"
   },
   "devDependencies": {
     "turbo": "^2.10.12"

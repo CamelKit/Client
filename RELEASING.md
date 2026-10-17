@@ -20,6 +20,17 @@ Which channel a build belongs to is decided automatically by the workflow (`.git
 
 - **Automatic Betas:** Any commit pushed or merged into `dev` automatically builds cross-platform packages and cuts a GitHub Pre-release. Testers on the Beta channel will automatically receive update prompts.
 - **Automatic Stable:** Merging `dev → main` cuts an official full release for players on the Stable channel.
+- **Bumping & Tagging Client Releases:**
+   ```bash
+   # Bump version in packages/client/package.json only (no commit/tag)
+   pnpm bump:client minor
+   pnpm bump:client patch
+
+   # Bump, run anti-bot guard, commit, and create release tag vX.Y.Z
+   pnpm release:client patch
+   pnpm release:client minor
+   pnpm release:client 0.1.0
+   ```
 - **Manual Tags:** You can also explicitly cut a release at any time by tagging:
    ```bash
    git tag -a v0.0.1 -m "CamelKit v0.0.1"
