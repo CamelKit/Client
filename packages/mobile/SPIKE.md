@@ -117,8 +117,8 @@ source android-env.sh                 # JAVA_HOME + ANDROID_HOME (no sudo)
 yarn install
 
 # 1. Build the renderer and stage it into www/public
-yarn workspace @evillite/client build
-yarn build:web
+pnpm --filter @camelkit/client build
+pnpm --filter @camelkit/mobile build:web
 
 # 2. Generate the native Android project + drop in the EvilLite native files
 npx cap add android
