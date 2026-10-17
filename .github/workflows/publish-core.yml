@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   publish:
@@ -67,7 +66,8 @@ jobs:
             echo "::error::NPM_TOKEN secret is missing or empty! Add it in repo Settings -> Secrets and variables -> Actions."
             exit 1
           fi
-          pnpm publish --no-git-checks --access public
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          pnpm publish --no-git-checks --access public --no-provenance
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
