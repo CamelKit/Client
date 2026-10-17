@@ -1,7 +1,4 @@
-import { Plugin } from '@camelkit/core/src/interfaces/highlite/plugin/plugin.class';
-import { SettingsTypes, type PluginSettings } from '@camelkit/core/src/interfaces/highlite/plugin/pluginSettings.interface';
-import { PluginAssetCache } from '@camelkit/core/src/utilities/pluginAssetCache';
-import { ModelIconCache } from '@camelkit/core/src/utilities/modelIconCache';
+import { Plugin, SettingsTypes, type PluginSettings, PluginAssetCache, ModelIconCache } from '@camelkit/core';
 
 /**
  * World Map plugin for EvilQuest.
@@ -88,6 +85,7 @@ export default class WorldMapPlugin extends Plugin {
             text: 'Open Chat Links in Popout Window',
             type: SettingsTypes.checkbox,
             value: true,
+            callback: () => {},
         },
     };
 

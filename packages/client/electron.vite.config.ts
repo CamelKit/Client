@@ -21,9 +21,10 @@ export default defineConfig(({ mode }) => {
     renderer: {
       plugins: [],
       resolve: {
-        alias: {
-          "@static": resolve(__dirname, "static")
-        }
+        alias: [
+          { find: '@static', replacement: resolve(__dirname, 'static') },
+          { find: /^@(?:camelkit|evillite|highlite|ryelite)\/core(?:\/.*)?$/, replacement: resolve(__dirname, '../core/dist/index.js') }
+        ]
       },
       ...(isDev && {
         server: {
