@@ -1,6 +1,6 @@
 {
   "name": "@camelkit/mobile",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "CamelKit mobile shell (Capacitor) — Android spike. Wraps the same renderer the desktop client uses.",
   "scripts": {

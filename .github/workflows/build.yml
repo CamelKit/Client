@@ -1,22 +1,117 @@
-name: Build CamelKit (Linux / Windows / macOS)
+name: Build CamelKit (Linux / Windows / macOS / Android)
 
-# Cross-platform builds happen on native runners — Windows installers need Windows
-# (or Wine), and macOS .dmg / universal / code-signing are macOS-only. A single Linux
-# box can only build Linux, so this matrix is how we produce all three.
-#
-# Run manually (Actions → this workflow → Run), or it runs on a v* tag. Artifacts are
-# attached to the run for testers to download; on a tag it also drafts a GitHub Release.
+# Cross-platform desktop builds (Ubuntu, Windows, macOS) and Android APK.
+# Automatically tags and cuts:
+#   - Beta pre-releases on push to `dev` or `staging` (e.g. v0.0.1-beta.42) -> triggers Beta updater
+#   - Full stable releases on push to `main` or explicit `v*` tags (e.g. v0.0.1) -> triggers Stable updater
+#   - Test builds on manual workflow_dispatch on feature branches
 
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    tags:
+      - 'v*'
+    branches:
+      - dev
+      - main
+      - staging
 
 permissions:
   contents: write
 
 jobs:
+  get_version:
+    name: Determine Release Version & Channel
+    runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.version.outputs.full_version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      release_name: ${{ steps.version.outputs.release_name }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      draft: ${{ steps.version.outputs.draft }}
+      base_version: ${{ steps.version.outputs.base_version }}
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Calculate version properties
+        id: version
+        shell: bash
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client/package.json').version")
+          # Strip any existing pre-release suffix from base version for clean stamping
+          CLEAN_BASE=$(echo "$BASE_VERSION" | sed 's/-.*//')
+
+          # 1. Manual workflow_dispatch
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+            if [[ "${{ github.ref_name }}" == 'dev' || "${{ github.ref_name }}" == 'staging' ]]; then
+              DRAFT="false"
+              PRERELEASE="true"
+              TAG_NAME="v${CLEAN_BASE}-beta.${{ github.run_id }}"
+              RELEASE_NAME="CamelKit Beta ${TAG_NAME}"
+              FULL_VERSION="${CLEAN_BASE}-beta.${{ github.run_id }}"
+            elif [[ "${{ github.ref_name }}" == 'main' ]]; then
+              DRAFT="false"
+              PRERELEASE="false"
+              TAG_NAME="v${CLEAN_BASE}"
+              RELEASE_NAME="CamelKit Release v${CLEAN_BASE}"
+              FULL_VERSION="${CLEAN_BASE}"
+            else
+              DRAFT="true"
+              PRERELEASE="false"
+              TAG_NAME="v${CLEAN_BASE}-test.${{ github.run_id }}"
+              RELEASE_NAME="CamelKit Test ${TAG_NAME}"
+              FULL_VERSION="${CLEAN_BASE}-test.${{ github.run_id }}"
+            fi
+
+          # 2. Push to dev or staging branch (Automated Beta Pre-release)
+          elif [[ "${{ github.ref_name }}" == 'dev' || "${{ github.ref_name }}" == 'staging' ]]; then
+            DRAFT="false"
+            PRERELEASE="true"
+            TAG_NAME="v${CLEAN_BASE}-beta.${{ github.run_number }}"
+            RELEASE_NAME="CamelKit Beta ${TAG_NAME}"
+            FULL_VERSION="${CLEAN_BASE}-beta.${{ github.run_number }}"
+
+          # 3. Push to main branch (Automated Stable Release)
+          elif [[ "${{ github.ref_name }}" == 'main' && "${{ github.ref_type }}" == 'branch' ]]; then
+            DRAFT="false"
+            PRERELEASE="false"
+            TAG_NAME="v${CLEAN_BASE}"
+            RELEASE_NAME="CamelKit Release v${CLEAN_BASE}"
+            FULL_VERSION="${CLEAN_BASE}"
+
+          # 4. Explicit Git Tag push (e.g. v0.0.1 or v0.0.1-beta.1)
+          elif [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            FULL_VERSION="${TAG_NAME#v}"
+            RELEASE_NAME="CamelKit ${{ github.ref_name }}"
+            DRAFT="false"
+            if [[ "${FULL_VERSION}" == *"-"* ]]; then
+              PRERELEASE="true"
+            else
+              PRERELEASE="false"
+            fi
+          fi
+
+          echo "base_version=${CLEAN_BASE}" >> "$GITHUB_OUTPUT"
+          echo "full_version=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "draft=${DRAFT}" >> "$GITHUB_OUTPUT"
+
+          echo "Target Version: ${FULL_VERSION}"
+          echo "Release Tag: ${TAG_NAME}"
+          echo "Channel Pre-release: ${PRERELEASE} (Draft: ${DRAFT})"
+
   build:
+    needs: get_version
+    name: Build Desktop (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
@@ -33,22 +128,38 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Enable Corepack (Yarn 4)
-        run: corepack enable
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Stamp Package Version
+        run: |
+          VERSION="${{ needs.get_version.outputs.full_version }}"
+          echo "Stamping dynamic version $VERSION into package.json manifests..."
+          node -e "
+            const fs = require('fs');
+            for (const file of ['packages/client/package.json', 'packages/mobile/package.json']) {
+              if (fs.existsSync(file)) {
+                const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+                pkg.version = process.argv[1];
+                fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+              }
+            }
+          " "$VERSION"
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       # The World Map plugin's source of truth is its own repo. Pull BOTH the plugin
       # source and its prebaked icon cache from there so packaged builds bundle the
-      # current plugin (the copy tracked in this fork can lag) and ship the icons
-      # instead of regenerating them at runtime. Best-effort: build still works without.
-      - name: Sync World Map plugin + prebaked cache from the plugin repo
+      # current plugin and ship icons instead of regenerating them at runtime.
+      - name: Sync World Map plugin + prebaked cache from repo
         run: |
           git clone --depth 1 https://github.com/atapifire/evillite-worldmap.git /tmp/wm || exit 0
           cp /tmp/wm/src/WorldMapPlugin.ts packages/client/src/renderer/client/plugins/WorldMapPlugin.ts 2>/dev/null || true
@@ -56,37 +167,32 @@ jobs:
           cp /tmp/wm/data/*.json packages/client/src/renderer/client/plugins/data/ 2>/dev/null || true
 
       # Temp core plugins (until the Plugin Hub installs them) also live in their own repos.
-      - name: Sync Collection Log plugin from its repo
+      - name: Sync Collection Log plugin from repo
         run: |
           git clone --depth 1 https://github.com/atapifire/evillite-collectionlog.git /tmp/cl || exit 0
           cp /tmp/cl/src/CollectionLogPlugin.ts packages/client/src/renderer/client/plugins/CollectionLogPlugin.ts 2>/dev/null || true
 
-      # Anti-bot guard: fail the build if the client/core OR any bundled plugin contains an
-      # input-fabrication / trusted-input bypass. Runs AFTER the plugin sync so it scans the
-      # bundled plugins too. We never ship a way to bot EvilQuest. See docs/anti-bot.md.
+      # Anti-bot guard: fail the build if client/core or any bundled plugin contains an input-fabrication vector.
       - name: Anti-bot guard (no input fabrication)
         run: node scripts/guard-input-fabrication.mjs
 
       - name: Build core
-        run: yarn workspace @camelkit/core build
+        run: pnpm --filter @camelkit/core build
 
       - name: Build client (renderer + main + copy plugin cache)
-        # __CAMELKIT_CANONICAL__ is baked here: TRUE only when this build runs in the canonical
-        # CamelC0re/Client repo, so fork builds never auto-update.
         env:
           CAMELKIT_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
           EVILLITE_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
-        run: yarn workspace @camelkit/client build
+        run: pnpm --filter @camelkit/client build
 
       - name: Package (${{ matrix.platform }})
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Build unsigned for tester handoff. Add signing creds + flip this on later.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           EV=$(node -p "require('electron/package.json').version")
           echo "Packaging with electron $EV"
-          yarn workspace @camelkit/client exec electron-builder \
+          pnpm --filter @camelkit/client exec electron-builder \
             --${{ matrix.platform }} -c.electronVersion="$EV" --publish never
 
       - name: Upload installers
@@ -103,14 +209,11 @@ jobs:
             packages/client/dist/*.zip
             packages/client/dist/*.blockmap
             packages/client/dist/*.yml
-            # Every platform emits an identically-named builder-debug.yml; uploading all
-            # three collides on the same release asset name and fails the release job. It's
-            # an electron-builder debug dump testers don't need — exclude it.
             !packages/client/dist/builder-debug.yml
 
-  # Android APK (Capacitor mobile shell). Separate from the desktop matrix — it needs the JDK +
-  # Android SDK, not electron-builder. Produces an unsigned debug APK testers can sideload.
   android:
+    needs: get_version
+    name: Build Android APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -120,43 +223,59 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Enable Corepack (Yarn 4)
-        run: corepack enable
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Stamp Package Version
+        run: |
+          VERSION="${{ needs.get_version.outputs.full_version }}"
+          node -e "
+            const fs = require('fs');
+            for (const file of ['packages/client/package.json', 'packages/mobile/package.json']) {
+              if (fs.existsSync(file)) {
+                const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+                pkg.version = process.argv[1];
+                fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+              }
+            }
+          " "$VERSION"
+
       - name: Install dependencies
-        run: yarn install --immutable
-      # Same temp plugin sync as the desktop build (until the Plugin Hub installs them).
+        run: pnpm install --frozen-lockfile
+
       - name: Sync World Map plugin + prebaked cache
         run: |
           git clone --depth 1 https://github.com/atapifire/evillite-worldmap.git /tmp/wm || exit 0
           cp /tmp/wm/src/WorldMapPlugin.ts packages/client/src/renderer/client/plugins/WorldMapPlugin.ts 2>/dev/null || true
           mkdir -p packages/client/src/renderer/client/plugins/data
           cp /tmp/wm/data/*.json packages/client/src/renderer/client/plugins/data/ 2>/dev/null || true
+
       - name: Sync Collection Log plugin
         run: |
           git clone --depth 1 https://github.com/atapifire/evillite-collectionlog.git /tmp/cl || exit 0
           cp /tmp/cl/src/CollectionLogPlugin.ts packages/client/src/renderer/client/plugins/CollectionLogPlugin.ts 2>/dev/null || true
+
       - name: Anti-bot guard (no input fabrication)
         run: node scripts/guard-input-fabrication.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Build core + renderer
         run: |
-          yarn workspace @camelkit/core build
-          yarn workspace @camelkit/client build
-      # Fork builds (atapifire/EvilLite) -> DEBUG apk: debuggable, WebView inspectable over adb, for
-      # our own testing. Canonical (CamelC0re/Client) -> SIGNED RELEASE apk: debuggable=false, so the
-      # WebView can't be driven over chrome://inspect (CDP injects isTrusted input that would bypass
-      # EvilQuest's anti-bot). Same canonical/fork split as the desktop updater gate. A canonical
-      # build with no signing secrets FAILS rather than silently shipping a debuggable apk.
-      # See docs/anti-bot.md + docs/release-signing.md.
-      - name: Build APK (debug on fork, signed release on canonical)
+          pnpm --filter @camelkit/core build
+          pnpm --filter @camelkit/client build
+
+      - name: Build APK (signed release if keystore available, debug fallback)
         working-directory: packages/mobile
         env:
           IS_CANONICAL: ${{ github.repository == 'CamelC0re/Client' }}
+          IS_PRERELEASE: ${{ needs.get_version.outputs.prerelease }}
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -169,20 +288,21 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           npx cap sync android
           mkdir -p out-apk
-          if [ "$IS_CANONICAL" = "true" ]; then
-            if [ -z "$ANDROID_KEYSTORE_B64" ]; then
-              echo "::error::Canonical release APK requires signing secrets (ANDROID_KEYSTORE_B64 etc). See docs/release-signing.md. Refusing to ship a debuggable APK."
-              exit 1
-            fi
+
+          if [ "$IS_CANONICAL" = "true" ] && [ -n "$ANDROID_KEYSTORE_B64" ]; then
+            echo "Signing canonical release APK with AGP injected keystore..."
             echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-            # AGP injected signing — no need to edit the Capacitor-generated build.gradle.
             (cd android && ./gradlew assembleRelease --no-daemon \
               -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.keystore" \
               -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
               -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
               -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD")
             cp android/app/build/outputs/apk/release/app-release.apk out-apk/CamelKit-android.apk
+          elif [ "$IS_CANONICAL" = "true" ] && [ "$IS_PRERELEASE" != "true" ]; then
+            echo "::error::Canonical stable release APK requires signing secrets (ANDROID_KEYSTORE_B64 etc). See docs/release-signing.md. Refusing to ship an unsigned stable release."
+            exit 1
           else
+            echo "Building debug APK (beta / development build)..."
             (cd android && ./gradlew assembleDebug --no-daemon)
             cp android/app/build/outputs/apk/debug/app-debug.apk out-apk/CamelKit-android-debug.apk
           fi
@@ -194,12 +314,11 @@ jobs:
           if-no-files-found: warn
           path: packages/mobile/out-apk/*.apk
 
-  # On a v* tag, gather every platform's installers into one GitHub Release so testers
-  # have permanent public download links (and electron-updater has its latest*.yml feed).
   release:
-    needs: [build, android]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, android, get_version]
+    name: Publish GitHub Release
     runs-on: ubuntu-latest
+    if: always() && needs.get_version.result == 'success' && needs.build.result == 'success' && needs.android.result == 'success'
     permissions:
       contents: write
     steps:
@@ -211,25 +330,22 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
-          draft: false
-          # Tags with a pre-release suffix (e.g. v0.2.0-beta.1) publish as pre-releases.
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ needs.get_version.outputs.tag_name }}
+          name: ${{ needs.get_version.outputs.release_name }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ needs.get_version.outputs.draft == 'true' }}
+          prerelease: ${{ needs.get_version.outputs.prerelease == 'true' }}
           generate_release_notes: true
           fail_on_unmatched_files: false
+          files: |
+            artifacts/**/*
+            !artifacts/**/builder-debug.yml
           body: |
-            Automated cross-platform build. **Unsigned**, so you'll see a one-time OS warning.
+            Automated ${{ needs.get_version.outputs.prerelease == 'true' && 'Beta Pre-release' || 'Full Release' }} (**${{ needs.get_version.outputs.tag_name }}**).
 
-            ### Install
-            - **Windows** — `CamelKit-Setup-*.exe`. SmartScreen → *More info* → *Run anyway*.
-            - **macOS** — `*.dmg` (use `arm64` for Apple Silicon, the plain one for Intel).
-              Drag to Applications, then right-click the app → *Open* the first time
-              (or `xattr -dr com.apple.quarantine /Applications/CamelKit.app`).
-            - **Linux — easiest:** `*.deb` → `sudo apt install ./CamelKit-*.deb`, then launch
-              **CamelKit** from your apps menu. No flags, no extra packages.
-            - **Linux — portable:** `*.AppImage` or `*.tar.gz`. On modern distros these may need
-              `--no-sandbox` (and the AppImage needs `libfuse2`); the `.deb` avoids both.
-            - **Android** — `CamelKit-android-debug.apk`. Sideload it (enable *Install unknown apps*).
-              Unsigned debug build; log in with your EvilQuest account in the system browser.
-
-            `arm64` files are for ARM machines (Apple Silicon, ARM Linux); the others are x64/Intel.
+            ### Installers
+            - **Windows** — `CamelKit-Setup-*.exe`
+            - **macOS** — `*.dmg` (use `arm64` for Apple Silicon, plain for Intel)
+            - **Linux — package:** `*.deb` (`sudo apt install ./CamelKit-*.deb`)
+            - **Linux — standalone:** `*.AppImage` or `*.tar.gz`
+            - **Android** — `CamelKit-android*.apk`

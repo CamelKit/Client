@@ -8,29 +8,23 @@ Work on a feature branch → PR into `dev`. Don't push straight to `dev`/`main`.
 
 ## Two release channels (already wired)
 The client has a **Release Channel** setting (Beta / Stable) and the auto-updater respects it.
-Which channel a build belongs to is decided by the **version/tag suffix** — one workflow does both:
+Which channel a build belongs to is decided automatically by the workflow (`.github/workflows/build.yml`):
 
-| Tag you push | GitHub Release | Channel | Audience |
-|---|---|---|---|
-| `v0.2.0-beta.16` (has `-`) | **pre-release** | **Beta** | devs + testers |
-| `v0.2.0` (clean) | **full release** | **Stable** | players |
+| Trigger | GitHub Release | Channel | Audience | Version Example |
+|---|---|---|---|---|
+| **Push to `dev`** | **pre-release** | **Beta** | devs + testers | `v0.0.1-beta.42` (auto-stamped with CI run number) |
+| **Push to `main`** | **full release** | **Stable** | players | `v0.0.1` |
+| **Tag `vX.Y.Z`** (clean) | **full release** | **Stable** | players | `v0.0.1` |
+| **Tag `vX.Y.Z-beta.N`** | **pre-release** | **Beta** | devs + testers | `v0.0.1-beta.1` |
+| **Manual Action Run** | **pre-release** | **Beta/Test** | testing | `v0.0.1-beta.<run_id>` or `-test.<run_id>` |
 
-- Cut **betas from `dev`** (`vX.Y.Z-beta.N`) → testers on the Beta channel auto-update.
-- Cut **stable from `main`** (`vX.Y.Z`) → players on the Stable channel auto-update.
-
-## Cutting a release
-1. Bump `packages/client/package.json` `version` (e.g. `0.2.0-beta.16`).
-2. Commit, then tag + push the tag:
+- **Automatic Betas:** Any commit pushed or merged into `dev` automatically builds cross-platform packages and cuts a GitHub Pre-release. Testers on the Beta channel will automatically receive update prompts.
+- **Automatic Stable:** Merging `dev → main` cuts an official full release for players on the Stable channel.
+- **Manual Tags:** You can also explicitly cut a release at any time by tagging:
    ```bash
-   git tag -a v0.2.0-beta.16 -m "CamelKit v0.2.0-beta.16"
-   git push origin v0.2.0-beta.16
+   git tag -a v0.0.1 -m "CamelKit v0.0.1"
+   git push origin v0.0.1
    ```
-3. CI (`.github/workflows/build.yml`) builds Linux/Windows/macOS and publishes the GitHub
-   Release on **this repo** (where the tag was pushed). Pre-release flag is automatic
-   (`contains(ref,'-')`). The in-app updater reads from `build.publish` → `CamelC0re/Client`.
-
-> CI only runs on the repo that holds the workflow + tag. Since CI lives here now, you can't
-> rely on it for quick local iteration — build locally (below).
 
 ## Testing builds locally
 CI won't trigger until a PR/tag, so use these for day-to-day testing:
@@ -51,3 +45,35 @@ Notes:
 ## Plugins
 Plugins live in their own repos (e.g. `evillite-worldmap`) and are synced in at build time.
 The Plugin Hub loads them. New plugin → new repo from the base template.
+
+---
+
+## Releasing `@camelkit/core` (NPM)
+
+The `@camelkit/core` library provides the TypeScript SDK and plugin APIs used by all CamelKit plugins.
+
+### Automated Release via Helper
+Run the release helper script to bump the version, compile/validate, and create the git commit + tag:
+```bash
+# Bump patch (0.0.1 -> 0.0.2)
+pnpm release:core patch
+
+# Or minor / major / explicit
+pnpm release:core minor
+pnpm release:core 0.1.0
+```
+
+Then push the commit and tag to GitHub:
+```bash
+git push origin dev
+git push origin core-v0.0.2
+```
+
+### What Happens in CI
+Pushing a `core-v*` tag triggers `.github/workflows/publish-core.yml`:
+1. Executes `scripts/guard-input-fabrication.mjs` (anti-bot security check).
+2. Compiles `@camelkit/core` (ESM bundle + TypeScript `.d.ts` declaration maps).
+3. Verifies version matching between tag and `packages/core/package.json`.
+4. Publishes `@camelkit/core` to the public NPM registry using secret `NPM_TOKEN`.
+5. Publishes a GitHub Release documenting the new core version.
+
