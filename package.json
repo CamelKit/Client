@@ -9,7 +9,8 @@
     "logs": "tail -f logs/client.log",
     "format": "turbo format",
     "format:check": "turbo format:check",
-    "format:fix": "turbo format:fix"
+    "format:fix": "turbo format:fix",
+    "release:core": "node scripts/release-core.mjs"
   },
   "devDependencies": {
     "turbo": "^2.10.12"

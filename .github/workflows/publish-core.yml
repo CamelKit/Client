@@ -1,0 +1,98 @@
+name: Publish @camelkit/core
+
+on:
+  push:
+    tags:
+      - 'core-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag or version to publish (e.g. core-v0.1.2)'
+        required: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    name: Build & Publish @camelkit/core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Anti-bot guard (no input fabrication)
+        run: node scripts/guard-input-fabrication.mjs
+
+      - name: Build @camelkit/core
+        run: pnpm --filter @camelkit/core build
+
+      - name: Verify package version
+        id: pkg
+        shell: bash
+        run: |
+          CORE_VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "core_version=$CORE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Target @camelkit/core version in package.json: $CORE_VERSION"
+          
+          if [[ "${{ github.ref }}" == refs/tags/core-v* ]]; then
+            TAG_VERSION="${GITHUB_REF#refs/tags/core-v}"
+            if [ "$TAG_VERSION" != "$CORE_VERSION" ]; then
+              echo "::error::Tag version ($TAG_VERSION) does not match packages/core/package.json version ($CORE_VERSION)!"
+              exit 1
+            fi
+          fi
+
+      - name: Publish to NPM
+        working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN secret is missing or empty! Add it in repo Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          pnpm publish --no-git-checks --access public
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/core-v')
+        with:
+          name: "@camelkit/core v${{ steps.pkg.outputs.core_version }}"
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          body: |
+            ## `@camelkit/core` v${{ steps.pkg.outputs.core_version }}
+            Official CamelKit Client Core library and TypeScript plugin definitions.
+
+            - **NPM Package**: [https://www.npmjs.com/package/@camelkit/core](https://www.npmjs.com/package/@camelkit/core)
+
+            ### Installation
+
+            ```bash
+            # Using Yarn
+            yarn add -D @camelkit/core@^${{ steps.pkg.outputs.core_version }}
+
+            # Using NPM
+            npm install --save-dev @camelkit/core@^${{ steps.pkg.outputs.core_version }}
+
+            # Using pnpm
+            pnpm add -D @camelkit/core@^${{ steps.pkg.outputs.core_version }}
+            ```
