@@ -63,3 +63,21 @@ body {
 ::-webkit-scrollbar {
     display: none !important;
 }
+
+/* Ensure the game's native world select dropdown is always visible on the login screen,
+   even at default client size (800x600) where the game's max-height media query
+   switches it to position: static and pushes it below the viewport fold. */
+.eq-world-dropup {
+    position: fixed !important;
+    left: 16px !important;
+    bottom: 16px !important;
+    margin-top: 0 !important;
+    z-index: 10000 !important;
+}
+
+@media (max-width: 520px) {
+    .eq-world-dropup {
+        left: 8px !important;
+        bottom: 8px !important;
+    }
+}

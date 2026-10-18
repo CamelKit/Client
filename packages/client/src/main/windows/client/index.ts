@@ -41,6 +41,13 @@ function buildBrowserIdentity(nativeUa: string): { ua: string; secChUa: string; 
     return { ua, secChUa, platform, major };
 }
 
+export function isGameHost(hostname: string): boolean {
+    return hostname === 'memoriesofmagic.com' ||
+        hostname.endsWith('.memoriesofmagic.com') ||
+        hostname === 'evilquest.net' ||
+        hostname.endsWith('.evilquest.net');
+}
+
 function localMimeType(filePath: string): string {
     const ext = path.extname(filePath).toLowerCase();
     const map: Record<string, string> = {
@@ -104,7 +111,7 @@ app.on("ready", async () => {
         // has no Vite dev server, so it proxied to a dead localhost:5173 (ERR_CONNECTION_REFUSED).
         const devRendererUrl = process.env['ELECTRON_RENDERER_URL'];
         const isInternalAsset = url.pathname.startsWith('/__camelkit__/') || url.pathname.startsWith('/__evillite__/') || url.pathname.startsWith('/icons/');
-        if ((url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') && isInternalAsset) {
+        if (isGameHost(url.hostname) && isInternalAsset) {
             const filePart = url.pathname.replace(/^\/__(camelkit|evillite)__\//, '').replace(/^\//, '');
             if (devRendererUrl) {
                 // Dev: proxy to Vite (TypeScript transforms + HMR)
@@ -151,7 +158,7 @@ app.on("ready", async () => {
         }
 
         // Proxy Vite dev server internal paths (HMR, node_modules, source files) — dev only.
-        if (devRendererUrl && (url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') &&
+        if (devRendererUrl && isGameHost(url.hostname) &&
             (url.pathname.startsWith('/@') ||
              url.pathname.startsWith('/node_modules/') ||
              url.pathname.startsWith('/client/') ||
@@ -167,7 +174,7 @@ app.on("ready", async () => {
         }
 
         // ── 2. Proxy memoriesofmagic.com / evilquest.net requests (game assets, API, /play) ────────
-        if (url.hostname === 'memoriesofmagic.com' || url.hostname === 'evilquest.net') {
+        if (isGameHost(url.hostname)) {
             const fullUrl = request.url;
             const isApi = url.pathname.startsWith('/api/') || url.pathname === '/play';
             const isAsset = url.pathname.startsWith('/assets/');
@@ -454,6 +461,20 @@ export async function createClientWindow() {
         return { action: 'deny' };
     });
 
+    // Keep world switches inside CamelKit shell instead of navigating to bare web /play
+    mainWindow.webContents.on('will-navigate', (event, navUrl) => {
+        try {
+            const parsed = new URL(navUrl);
+            if (isGameHost(parsed.hostname) && (parsed.pathname === '/play' || parsed.pathname === '/play/')) {
+                event.preventDefault();
+                console.log(`[Navigation] Redirecting world navigation ${parsed.hostname}/play -> client.html`);
+                mainWindow.loadURL(`https://${parsed.hostname}/__camelkit__/client.html${parsed.search}`);
+            }
+        } catch (e) {
+            console.error('[Navigation] Error in will-navigate:', e);
+        }
+    });
+
     mainWindow.webContents.on('before-input-event', (event, input) => {
         if (input.key === 'F12' && input.type === 'keyDown') {
             event.preventDefault();
@@ -491,8 +512,14 @@ export async function createClientWindow() {
                 || details.requestHeaders['upgrade'] === 'websocket';
                 
             if (isWs) {
-                details.requestHeaders['Origin'] = 'https://memoriesofmagic.com';
-                details.requestHeaders['Referer'] = 'https://memoriesofmagic.com/';
+                try {
+                    const wsUrl = new URL(details.url);
+                    details.requestHeaders['Origin'] = `https://${wsUrl.hostname}`;
+                    details.requestHeaders['Referer'] = `https://${wsUrl.hostname}/`;
+                } catch {
+                    details.requestHeaders['Origin'] = 'https://memoriesofmagic.com';
+                    details.requestHeaders['Referer'] = 'https://memoriesofmagic.com/';
+                }
             }
 
             // Normalise to the SAME consistent Google-Chrome identity used by the

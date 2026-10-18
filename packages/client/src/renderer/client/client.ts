@@ -22,7 +22,6 @@ import '@static/css/overrides.css';
 import '@static/css/item-tooltip.css';
 
 import './helpers/titlebarHelpers.js';
-import { setupWorldSelectorObserver } from './helpers/worldSelectHelper';
 
 // Note: With the page running on https://memoriesofmagic.com, relative paths like
 // /assets/..., /data/..., /maps/..., /ui/..., /api/... resolve naturally to
@@ -314,8 +313,9 @@ async function obtainGameClient() {
     return Promise.resolve("");
 }
 
-// GET Request to https://memoriesofmagic.com/play
-const response = await fetch('https://memoriesofmagic.com/play');
+// GET Request to /play on current world
+const gameOrigin = window.location.origin;
+const response = await fetch(`${gameOrigin}/play`);
 const text = await response.text();
 
 const parser = new DOMParser();
@@ -332,9 +332,9 @@ Array.from(doc.head.children).forEach(child => {
         if (child.hasAttribute('href')) {
             const href = child.getAttribute('href');
             if (href && href.startsWith('/assets/')) {
-                child.setAttribute('href', href.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
+                child.setAttribute('href', href.replace('/assets/', `${gameOrigin}/assets/`));
             } else if (href && href.startsWith('/')) {
-                child.setAttribute('href', 'https://memoriesofmagic.com' + href);
+                child.setAttribute('href', gameOrigin + href);
             }
         }
         document.head.appendChild(child.cloneNode(true));
@@ -349,9 +349,9 @@ Array.from(doc.body.children).forEach(child => {
         if (child.hasAttribute('href')) {
             const href = child.getAttribute('href');
             if (href && href.startsWith('/assets/')) {
-                child.setAttribute('href', href.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
+                child.setAttribute('href', href.replace('/assets/', `${gameOrigin}/assets/`));
             } else if (href && href.startsWith('/')) {
-                child.setAttribute('href', 'https://memoriesofmagic.com' + href);
+                child.setAttribute('href', gameOrigin + href);
             }
         }
 
@@ -378,9 +378,9 @@ scripts.forEach(script => {
     if (newScript.hasAttribute('src')) {
         const src = newScript.getAttribute('src');
         if (src && src.startsWith('/assets/')) {
-            newScript.setAttribute('src', src.replace('/assets/', 'https://memoriesofmagic.com/assets/'));
+            newScript.setAttribute('src', src.replace('/assets/', `${gameOrigin}/assets/`));
         } else if (src && src.startsWith('/')) {
-            newScript.setAttribute('src', 'https://memoriesofmagic.com' + src);
+            newScript.setAttribute('src', gameOrigin + src);
         }
     }
 
@@ -452,9 +452,6 @@ toElements.forEach(element => {
         }
     }
 });
-
-// Inject World Selector into Login Screen
-setupWorldSelectorObserver();
 
 // Page Setup Completed, init hooks
 await obtainGameClient();

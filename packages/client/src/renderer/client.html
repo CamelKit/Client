@@ -35,7 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
                 var _OrigWS = window.WebSocket;
                 function _PatchedWS(url, protocols) {
                     if (typeof url === 'string') {
-                        var fixed = url.replace(/^ws:\/\/(memoriesofmagic\.com|evilquest\.net)/, 'wss://$1');
+                        var fixed = url.replace(/^ws:\/\/([^/]+\.(memoriesofmagic\.com|evilquest\.net)|memoriesofmagic\.com|evilquest\.net)/, 'wss://$1');
                         if (fixed !== url) console.log('[WS-PATCH] ' + url + ' → ' + fixed);
                         url = fixed;
                     }
