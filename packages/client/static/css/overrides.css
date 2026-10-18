@@ -81,3 +81,22 @@ body {
         bottom: 8px !important;
     }
 }
+
+/* Ensure the game's native user/password login fields, remember-me, and tabs stay hidden across all worlds */
+.eq-login-field,
+.eq-login-remember,
+.eq-login-tabs,
+.eq-login-recaptcha-notice,
+.eq-login-error,
+.eq-login-remote-signup,
+#login-submit {
+    display: none !important;
+}
+
+/* Ensure CamelKit OAuth authorize button is styled and visible */
+#camelkit-oauth-authorize {
+    display: block !important;
+    width: 100% !important;
+    margin-top: 14px !important;
+    cursor: pointer !important;
+}

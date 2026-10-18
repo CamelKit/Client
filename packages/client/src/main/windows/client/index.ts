@@ -175,6 +175,12 @@ app.on("ready", async () => {
 
         // ── 2. Proxy memoriesofmagic.com / evilquest.net requests (game assets, API, /play) ────────
         if (isGameHost(url.hostname)) {
+            // Keep top-level window navigation inside CamelKit shell instead of navigating to bare web /play
+            if (request.mode === 'navigate' && (url.pathname === '/play' || url.pathname === '/play/')) {
+                console.log(`[Protocol] Intercepted top-level /play navigation to ${url.hostname} -> redirecting to client.html`);
+                return Response.redirect(`https://${url.hostname}/__camelkit__/client.html${url.search}`, 302);
+            }
+
             const fullUrl = request.url;
             const isApi = url.pathname.startsWith('/api/') || url.pathname === '/play';
             const isAsset = url.pathname.startsWith('/assets/');
@@ -191,8 +197,8 @@ app.on("ready", async () => {
             }
 
             try {
-                // Inject session cookies
-                const cookies = await session.defaultSession.cookies.get({ domain: url.hostname });
+                // Inject session cookies (matches host and shared parent-domain cookies)
+                const cookies = await session.defaultSession.cookies.get({ url: fullUrl });
                 const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
                 if (isApi) {
@@ -230,12 +236,15 @@ app.on("ready", async () => {
                     const parts = raw.split(';').map(s => s.trim());
                     const [name, ...rest] = parts[0].split('=');
                     if (isApi) console.log(`[Protocol] storing cookie: ${name.trim()}`);
+                    const isMoM = url.hostname.endsWith('memoriesofmagic.com');
+                    const isEq = url.hostname.endsWith('evilquest.net');
                     const cookieDetails: Electron.CookiesSetDetails = {
                         url: `https://${url.hostname}`,
                         name: name.trim(),
                         value: rest.join('=').trim(),
                         httpOnly: parts.some(p => p.toLowerCase() === 'httponly'),
                         secure: parts.some(p => p.toLowerCase() === 'secure'),
+                        domain: isMoM ? '.memoriesofmagic.com' : (isEq ? '.evilquest.net' : undefined),
                     };
                     const maxAgePart = parts.find(p => p.toLowerCase().startsWith('max-age='));
                     const expiresPart = parts.find(p => p.toLowerCase().startsWith('expires='));
@@ -332,7 +341,12 @@ app.on("ready", async () => {
         const passHeaders = new Headers(request.headers);
         const currentReferer = passHeaders.get('Referer') || '';
         if (currentReferer.includes('__camelkit__') || currentReferer.includes('__evillite__')) {
-            passHeaders.set('Referer', 'https://memoriesofmagic.com/');
+            try {
+                const refUrl = new URL(currentReferer);
+                passHeaders.set('Referer', `https://${refUrl.hostname}/`);
+            } catch {
+                passHeaders.set('Referer', 'https://memoriesofmagic.com/');
+            }
         }
         
         // Normalise to one consistent Google-Chrome identity (matches the JS fingerprint).

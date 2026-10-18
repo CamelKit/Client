@@ -581,33 +581,44 @@ async function oauthLogin() {
 function setupOAuthLoginScreen() {
     const transform = () => {
         const card = document.querySelector('.eq-login-card');
-        if (!card || card.querySelector('#camelkit-oauth-authorize')) return;
+        if (!card) return;
 
-        // Hide the native login controls.
-        card.querySelectorAll('.eq-login-field, .eq-login-remember, .eq-login-tabs, .eq-login-recaptcha-notice, .eq-login-error')
+        // Hide native login controls across all worlds (including after switchMode resets inline styles)
+        card.querySelectorAll('.eq-login-field, .eq-login-remember, .eq-login-tabs, .eq-login-recaptcha-notice, .eq-login-error, .eq-login-remote-signup')
             .forEach((el) => ((el as HTMLElement).style.display = 'none'));
 
+        let ours = card.querySelector('#camelkit-oauth-authorize') as HTMLElement | null;
         const submit = card.querySelector('#login-submit') as HTMLElement | null;
+
         if (submit) {
-            // Reuse the native submit button (keeps the exact menu style); clone to strip
-            // its form-submit handler, retitle, and wire OAuth.
-            const ours = submit.cloneNode(true) as HTMLElement;
-            ours.id = 'camelkit-oauth-authorize';
-            ours.setAttribute('type', 'button');
-            ours.textContent = 'Authorize EvilQuest Login';
-            (ours as any).disabled = false;
-            ours.style.display = '';
-            ours.addEventListener('click', (e) => { e.preventDefault(); void oauthLogin(); });
-            submit.parentElement?.replaceChild(ours, submit);
+            submit.style.display = 'none';
+        }
+
+        if (!ours) {
+            if (submit) {
+                // Reuse native submit button styling
+                ours = submit.cloneNode(true) as HTMLElement;
+                ours.id = 'camelkit-oauth-authorize';
+                ours.setAttribute('type', 'button');
+                ours.textContent = 'Authorize EvilQuest Login';
+                (ours as any).disabled = false;
+                ours.style.display = '';
+                ours.addEventListener('click', (e) => { e.preventDefault(); void oauthLogin(); });
+                submit.parentElement?.insertBefore(ours, submit);
+            } else {
+                // Fallback if the submit button isn't found
+                const btn = document.createElement('button');
+                btn.id = 'camelkit-oauth-authorize';
+                btn.className = 'eq-login-submit';
+                btn.type = 'button';
+                btn.textContent = 'Authorize EvilQuest Login';
+                btn.addEventListener('click', (e) => { e.preventDefault(); void oauthLogin(); });
+                const form = card.querySelector('#login-form') || card;
+                form.appendChild(btn);
+                ours = btn;
+            }
         } else {
-            // Fallback if the submit button isn't found: a plain styled button.
-            const btn = document.createElement('button');
-            btn.id = 'camelkit-oauth-authorize';
-            btn.className = 'eq-login-submit';
-            btn.type = 'button';
-            btn.textContent = 'Authorize EvilQuest Login';
-            btn.onclick = () => void oauthLogin();
-            card.appendChild(btn);
+            ours.style.display = '';
         }
     };
     const obs = new MutationObserver(transform);

@@ -151,6 +151,7 @@ async function persistSetCookies(setCookies: string[]): Promise<void> {
             value: rest.join('=').trim(),
             secure: parts.some((p) => /^secure$/i.test(p)),
             httpOnly: parts.some((p) => /^httponly$/i.test(p)),
+            domain: '.memoriesofmagic.com',
         };
         const maxAge = parts.find((p) => /^max-age=/i.test(p));
         const expires = parts.find((p) => /^expires=/i.test(p));
@@ -293,6 +294,11 @@ export function clearOAuthSession(): void {
             body: new URLSearchParams({ client_id: clientId(), token: rt }).toString(),
             bypassCustomProtocolHandlers: true,
         } as any).catch(() => {});
+    }
+    for (const host of ['https://memoriesofmagic.com', 'https://world2.memoriesofmagic.com', 'https://.memoriesofmagic.com']) {
+        for (const name of ['eq_ws_session', 'eq_device_id']) {
+            session.defaultSession.cookies.remove(host, name).catch(() => {});
+        }
     }
 }
 
