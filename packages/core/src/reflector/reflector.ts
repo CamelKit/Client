@@ -24,6 +24,13 @@ import { HookManager } from '../managers/highlite/hookManager';
 import { ClassInfo, EnumInfo, ClassSignature, EnumSignature, HookMap, HookEntries } from './types';
 import { ClassSignatures, EnumSignatures } from './signatures';
 
+interface ReflectorState {
+    classes: ClassInfo[];
+    enums: EnumInfo[];
+    classHooks: HookMap;
+    enumHooks: HookMap;
+}
+
 // Define the hook reflector for mapping classes and statements
 export class Reflector {
 
@@ -33,17 +40,51 @@ export class Reflector {
     // Define the AST
     private static ast: Node;
 
+    // Shared global state across module boundaries (Vite bundle vs dynamic imports)
+    private static get state(): ReflectorState {
+        const g = (typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : {})) as any;
+        if (!g.__camelkitReflectorState) {
+            g.__camelkitReflectorState = {
+                classes: [],
+                enums: [],
+                classHooks: new Map(),
+                enumHooks: new Map(),
+            };
+        }
+        return g.__camelkitReflectorState;
+    }
+
     // Define the classes
-    private static classes: ClassInfo[] = [];
+    private static get classes(): ClassInfo[] {
+        return Reflector.state.classes;
+    }
+    private static set classes(val: ClassInfo[]) {
+        Reflector.state.classes = val;
+    }
 
     // Define the enums
-    private static enums: EnumInfo[] = [];
+    private static get enums(): EnumInfo[] {
+        return Reflector.state.enums;
+    }
+    private static set enums(val: EnumInfo[]) {
+        Reflector.state.enums = val;
+    }
 
     // Define the class hooks
-    private static classHooks: HookMap = new Map();
+    private static get classHooks(): HookMap {
+        return Reflector.state.classHooks;
+    }
+    private static set classHooks(val: HookMap) {
+        Reflector.state.classHooks = val;
+    }
 
     // Define the enum hooks
-    private static enumHooks: HookMap = new Map();
+    private static get enumHooks(): HookMap {
+        return Reflector.state.enumHooks;
+    }
+    private static set enumHooks(val: HookMap) {
+        Reflector.state.enumHooks = val;
+    }
 
     // Look the hooks from client source (single module or array of modules)
     static async loadHooksFromSource(source : string | string[]): Promise<void> {

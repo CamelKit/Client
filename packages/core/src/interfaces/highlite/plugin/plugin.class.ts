@@ -36,7 +36,7 @@ export abstract class Plugin {
         enable: {
             text: 'Enable',
             type: SettingsTypes.checkbox,
-            value: false, // Default to false
+            value: true, // Default to true so newly installed plugins start enabled
             callback: this.onSettingsChanged_enabled,
         },
     };

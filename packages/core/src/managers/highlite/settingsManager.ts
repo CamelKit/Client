@@ -60,7 +60,7 @@ export class SettingsManager {
      *  shows on the main menu / logged out and is ordered before plugin icons. The settings
      *  content is still built in createMenu() on login. Idempotent. */
     ensureSettingsIcon() {
-        if (this.settingsIconReady) return;
+        if (this.settingsIconReady && this.panelContainer) return;
         this.panelManager = this.panelManager ?? document.highlite.managers.PanelManager;
         if (!this.panelManager) return;
         this.panelContainer = this.panelManager.requestMenuItem('🛠️', 'Settings')[1] as HTMLDivElement;
@@ -79,11 +79,16 @@ export class SettingsManager {
         return Promise.resolve();
     }
 
-    async deinit(): Promise<void> {
-        this.panelManager.removeMenuItem('🛠️');
-        if (this.panelContainer) {
-            this.panelContainer.remove();
-            this.panelContainer = null;
+    async deinit(removeIcon = false): Promise<void> {
+        if (removeIcon) {
+            this.panelManager?.removeMenuItem('🛠️');
+            this.settingsIconReady = false;
+            if (this.panelContainer) {
+                this.panelContainer.remove();
+                this.panelContainer = null;
+            }
+        } else if (this.panelContainer) {
+            this.panelContainer.innerHTML = '';
         }
 
         if (this.currentView) {
@@ -106,12 +111,22 @@ export class SettingsManager {
         this.isInitialized = false;
     }
 
+    private refreshPromise: Promise<void> | null = null;
+
     async refresh(): Promise<void> {
-    if (!this.isInitialized) return;
-    await this.deinit();
-    await this.init();
-    // Re-register to rebuild plugin list and UI rows after installs/uninstalls
-    await this.registerPlugins();
+        if (!this.isInitialized) return;
+        if (this.refreshPromise) return this.refreshPromise;
+        this.refreshPromise = (async () => {
+            try {
+                await this.deinit();
+                await this.init();
+                // Re-register to rebuild plugin list and UI rows after installs/uninstalls
+                await this.registerPlugins();
+            } finally {
+                this.refreshPromise = null;
+            }
+        })();
+        return this.refreshPromise;
     }
 
     /**
@@ -123,6 +138,8 @@ export class SettingsManager {
             if (settingKey === 'enable') continue; // Skip enable setting
 
             const setting = plugin.settings[settingKey];
+            if (!setting || (setting as any).__isReactive) continue;
+            (setting as any).__isReactive = true;
 
             // Create a proxy that intercepts property changes
             plugin.settings[settingKey] = new Proxy(setting, {
@@ -228,6 +245,7 @@ export class SettingsManager {
     private createMenu() {
         this.ensureSettingsIcon();
         if (!this.panelContainer) return;
+        this.panelContainer.innerHTML = '';
         this.panelContainer.style.display = 'flex';
         this.panelContainer.style.width = '100%';
         this.panelContainer.style.background = 'var(--theme-background)';

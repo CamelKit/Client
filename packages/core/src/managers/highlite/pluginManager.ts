@@ -22,6 +22,7 @@ import type { PluginConfig } from '../../interfaces/highlite/plugin/PluginConfig
 import { PanelManager } from './panelManager';
 import { DatabaseManager } from './databaseManager';
 import { SettingsManager } from './settingsManager';
+import { PluginDataManager } from './pluginDataManager';
 
 // CamelKit Hub API endpoints
 export const DEFAULT_HUB_API_URL = 'https://api.camelkit.dev';
@@ -40,13 +41,14 @@ export class PluginManager {
     private panelManager: PanelManager = new PanelManager();
     private databaseManager: DatabaseManager = new DatabaseManager();
     private settingsManager: SettingsManager = new SettingsManager();
+    private pluginDataManager: PluginDataManager = new PluginDataManager();
     private panelContent!: HTMLDivElement;
     private listContainer!: HTMLDivElement;
     private searchInput!: HTMLInputElement;
     private currentFilter: string = '';
     private didInitialSync = false;
     private managedPlugins: ManagedPlugin[] = [];
-    private isLoggedIn: boolean = false;
+    public isLoggedIn: boolean = false;
 
     public get plugins(): ManagedPlugin[] {
         return this.managedPlugins;
@@ -149,16 +151,89 @@ export class PluginManager {
         this.panelContent.appendChild(toolbar);
         this.panelContent.appendChild(this.listContainer);
 
-        const pluginConfigs = await this.obtainPluginConfigs();
-        for (const pluginConfig of pluginConfigs) {
-            const managedPlugin: ManagedPlugin = {
-                config: pluginConfig,
-                class: undefined,
-                instance: undefined,
-            };
-            this.managedPlugins.push(managedPlugin);
+        // 1. Unconditionally load already-installed plugins from IndexedDB (works 100% offline!)
+        await this.loadInstalledPluginsFromStorage();
+
+        // 2. Query the remote Plugin Hub manifest (if online) and enrich plugin entries
+        try {
+            const pluginConfigs = await this.obtainPluginConfigs();
+            for (const pluginConfig of pluginConfigs) {
+                const key = this.getPluginKey(pluginConfig);
+                const managed = this.managedPlugins.find((mp) => mp.config && this.getPluginKey(mp.config) === key);
+                if (!managed) {
+                    const managedPlugin: ManagedPlugin = {
+                        config: pluginConfig,
+                        class: undefined,
+                        instance: undefined,
+                    };
+                    this.managedPlugins.push(managedPlugin);
+                } else {
+                    managed.config = pluginConfig; // update with latest remote manifest
+                }
+            }
+        } catch (e) {
+            console.warn('[CamelKit] Failed to fetch plugin hub manifest (offline?):', e);
         }
+
         await this.populatePluginHub();
+    }
+
+    /**
+     * Load previously installed plugins directly from IndexedDB without relying on Hub connectivity.
+     */
+    public async loadInstalledPluginsFromStorage(): Promise<void> {
+        if (!this.databaseManager.database) {
+            await this.databaseManager.initDB();
+        }
+        if (!this.databaseManager.database) return;
+
+        try {
+            const keys = await this.databaseManager.database.getAllKeys('plugins');
+            console.info(`[CamelKit] Loading ${keys.length} installed plugin(s) from local storage...`);
+            for (const key of keys) {
+                const installedPlugin = await this.databaseManager.database.get('plugins', key);
+                if (!installedPlugin || !installedPlugin.blob) continue;
+
+                let managed = this.managedPlugins.find(
+                    (mp) => (mp.config && this.getPluginKey(mp.config) === key) ||
+                            (mp.installedConfig && this.getPluginKey(mp.installedConfig) === key)
+                );
+                if (managed?.instance) continue;
+
+                const blob = installedPlugin.blob as Blob;
+                const url = URL.createObjectURL(blob);
+                try {
+                    const pluginModule = await import(/* @vite-ignore */ url);
+                    const pluginClass = pluginModule.default;
+                    if (typeof pluginClass !== 'function') {
+                        URL.revokeObjectURL(url);
+                        continue;
+                    }
+                    if (!managed) {
+                        managed = {
+                            config: installedPlugin.config,
+                            class: pluginClass,
+                            instance: undefined,
+                            blob,
+                            url,
+                            installedConfig: installedPlugin.config,
+                        };
+                        this.managedPlugins.push(managed);
+                    } else {
+                        managed.class = pluginClass;
+                        managed.blob = blob;
+                        managed.url = url;
+                        managed.installedConfig = installedPlugin.config;
+                    }
+                    this.registerPlugin(pluginClass);
+                } catch (err) {
+                    console.error(`[CamelKit] Failed to import installed plugin (${key}):`, err);
+                    URL.revokeObjectURL(url);
+                }
+            }
+        } catch (e) {
+            console.error('[CamelKit] Error loading installed plugins from IndexedDB:', e);
+        }
     }
 
     public async getHubApiUrl(): Promise<string> {
@@ -205,8 +280,14 @@ export class PluginManager {
 
     public isPluginUpToDate(installed?: PluginConfig, latest?: PluginConfig): boolean {
         if (!installed || !latest) return false;
-        const instVer = (installed.version ?? installed.latest_commit_hash ?? installed.asset_sha ?? '').toLowerCase();
-        const latestVer = (latest.version ?? latest.latest_commit_hash ?? latest.asset_sha ?? '').toLowerCase();
+        if (installed.asset_sha && latest.asset_sha) {
+            return installed.asset_sha.toLowerCase() === latest.asset_sha.toLowerCase();
+        }
+        if (installed.latest_commit_hash && latest.latest_commit_hash) {
+            return installed.latest_commit_hash.toLowerCase() === latest.latest_commit_hash.toLowerCase();
+        }
+        const instVer = (installed.version ?? '').toLowerCase();
+        const latestVer = (latest.version ?? '').toLowerCase();
         return Boolean(instVer && latestVer && instVer === latestVer);
     }
 
@@ -418,7 +499,6 @@ export class PluginManager {
                         pluginKey
                     );
 
-                    await this.settingsManager.refresh();
                     uninstallButton.disabled = false;
                     // mark installed version in-memory
                     plugin.installedConfig = plugin.config;
@@ -491,7 +571,6 @@ export class PluginManager {
                     plugin.installedConfig = plugin.config;
                     version.textContent = `Version: ${this.getPluginVersion(plugin.config)}`;
                     updateButton.style.display = 'none';
-                    await this.settingsManager.refresh();
                 } catch (error) {
                     console.error(`[CamelKit] Failed to update plugin:`, error);
                     updateButton.textContent = 'Failed';
@@ -532,6 +611,10 @@ export class PluginManager {
     private async syncPluginState(plugin: PluginConfig): Promise<Blob | undefined> {
         if (!this.databaseManager.database) return undefined; // DB guard
         const key = this.getPluginKey(plugin);
+        const managed = this.managedPlugins.find((mp) => mp.config && this.getPluginKey(mp.config) === key);
+        if (managed && managed.blob && managed.instance) {
+            return managed.blob;
+        }
         const installedPlugin = await this.databaseManager.database.get('plugins', key);
         if (installedPlugin) {
             const blob = installedPlugin.blob as Blob;
@@ -679,17 +762,32 @@ export class PluginManager {
 
         // Check if we are logged in
         if (this.isLoggedIn) {
-            if (pluginInstance.init) {
-                pluginInstance.init();
-            }
+            (async () => {
+                try {
+                    if (this.settingsManager.isInitialized) {
+                        await this.settingsManager.refresh();
+                    }
+                    const pdm = document.highlite?.managers?.PluginDataManager || this.pluginDataManager;
+                    if (pdm && (pdm.isInitialized || pdm.initialized)) {
+                        await pdm.addPlugin(pluginInstance);
+                    }
+                } catch (e) {
+                    console.warn(`[Highlite] Failed to bind settings/data for ${pluginInstance.pluginName}:`, e);
+                }
 
-            if (pluginInstance.postInit) {
-                pluginInstance.postInit();
-            }
+                if (pluginInstance.init) {
+                    try { pluginInstance.init(); } catch (e) { console.error(`[Highlite] Error in init() for ${pluginInstance.pluginName}:`, e); }
+                }
 
-            if (pluginInstance.start) {
-                pluginInstance.start();
-            }
+                if (pluginInstance.postInit) {
+                    try { pluginInstance.postInit(); } catch (e) { console.error(`[Highlite] Error in postInit() for ${pluginInstance.pluginName}:`, e); }
+                }
+
+                const enabled = pluginInstance.settings?.enable?.value !== false;
+                if (enabled && pluginInstance.start) {
+                    try { pluginInstance.start(); } catch (e) { console.error(`[Highlite] Error in start() for ${pluginInstance.pluginName}:`, e); }
+                }
+            })();
         }
 
         return true;

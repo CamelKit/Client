@@ -117,6 +117,10 @@ export class HookManager {
             return false;
         }
 
+        if (typeof classObject[fnName] !== 'function') {
+            return false;
+        }
+
         let functionName = fnName;
         if (functionName.startsWith('_')) {
             functionName = functionName.substring(1);
@@ -159,6 +163,10 @@ export class HookManager {
             return false;
         }
 
+        if (typeof classObject[fnName] !== 'function') {
+            return false;
+        }
+
         let functionName = fnName;
         if (functionName.startsWith('_')) {
             functionName = functionName.substring(1);
@@ -183,6 +191,10 @@ export class HookManager {
 
         if (!classObject) {
             // console.warn(`[CamelKit] Attempted to register unknown static client class hook (${sourceClass}).`);
+            return false;
+        }
+
+        if (typeof classObject[fnName] !== 'function') {
             return false;
         }
 

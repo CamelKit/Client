@@ -8,6 +8,5 @@ await esbuild.build({
     outfile: './dist/index.js',
     minify: true,
     keepNames: true,
-    treeShaking: true,
-    target: 'chrome138'
+    treeShaking: true
 });

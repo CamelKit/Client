@@ -40,6 +40,7 @@ export class Highlite {
     databaseManager: DatabaseManager;
     soundManager: SoundManager;
     pluginDataManager: PluginDataManager;
+    private boundLifecycleHooks = new Set<string>();
 
     constructor() {
         console.info('[CamelKit] Core Initializing!');
@@ -96,26 +97,57 @@ export class Highlite {
     // NOTE: This is used to delay plugin-starting until after the login is complete.
     // This is because we want to associate user-settings with the user account.
     async startHook(fnName: string, ...args: any[]) {
-        await this.settingsManager.init();
-        await this.settingsManager.registerPlugins();
-        await this.pluginDataManager.initialize();
-        for (const plugin of this.pluginManager.plugins) {
-            if (plugin.instance) {
-                await this.pluginDataManager.addPlugin(plugin.instance);
-            }
-        }
-        this.pluginManager.initAll();
-        this.pluginManager.postInitAll();
-        this.pluginManager.startAll();
+        if (this.pluginManager.isLoggedIn) return;
         this.pluginManager.setLoginState(true);
+
+        try {
+            await this.settingsManager.init();
+            await this.settingsManager.registerPlugins();
+            await this.pluginDataManager.initialize();
+            for (const plugin of this.pluginManager.plugins) {
+                if (plugin.instance) {
+                    try {
+                        await this.pluginDataManager.addPlugin(plugin.instance);
+                    } catch (e) {
+                        console.warn(`[Highlite] Failed to bind data for plugin ${plugin.instance.pluginName}:`, e);
+                    }
+                }
+            }
+            this.pluginManager.initAll();
+            this.pluginManager.postInitAll();
+            this.pluginManager.startAll();
+        } catch (e) {
+            console.error('[Highlite] Error in startHook:', e);
+        }
     }
 
     async stopHook(fnName: string, ...args: any[]) {
+        if (!this.pluginManager.isLoggedIn) return;
         console.warn(`[CamelKit] Stopping all plugins due to: ${fnName}`);
         this.panelManager.forceClose();
         this.settingsManager.deinit();
         this.pluginManager.stopAll();
         this.pluginManager.setLoginState(false);
+    }
+
+    private registerLifecycleHook(targetClass: string, fnName: string, hookFn: (...args: any[]) => any) {
+        const key = `${targetClass}_${fnName}`;
+        if (this.boundLifecycleHooks.has(key)) return;
+        if (this.hookManager.registerClassHook(targetClass, fnName, hookFn)) {
+            this.boundLifecycleHooks.add(key);
+        }
+    }
+
+    bindLifecycleHooks() {
+        // Start Plugins and Settings after Login
+        this.registerLifecycleHook('SocketManager', 'markGameCryptoReady', this.startHook.bind(this));
+        this.registerLifecycleHook('GameManager', 'resolveLoginReady', this.startHook.bind(this));
+
+        // Stop Plugins and Settings during logout events
+        this.registerLifecycleHook('GameManager', 'handleConnectionLost', this.stopHook.bind(this));
+        this.registerLifecycleHook('SocketManager', 'closeQuietly', this.stopHook.bind(this));
+        this.registerLifecycleHook('SocketManager', 'failGameSocket', this.stopHook.bind(this));
+        this.registerLifecycleHook('SocketManager', 'onDisconnect', this.stopHook.bind(this));
     }
 
     initialize() {
@@ -129,18 +161,7 @@ export class Highlite {
         // These are the lookup tables
         Reflector.bindEnumHooks(this.hookManager);
 
-        // Start Plugins and Settings after Login
-        this.hookManager.registerClassHook('SocketManager', 'markGameCryptoReady', this.startHook.bind(this));
-        this.hookManager.registerClassHook('GameManager', 'resolveLoginReady', this.startHook.bind(this));
-
-        // Stop Plugins and Settings during logout events
-        this.hookManager.registerClassHook('GameManager', 'handleConnectionLost', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', 'closeQuietly', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', 'failGameSocket', this.stopHook.bind(this));
-        this.hookManager.registerClassHook('SocketManager', 'onDisconnect', this.stopHook.bind(this));
-
-
-    // Plugin Hub UI will be initialized after DB is ready in start()
+        this.bindLifecycleHooks();
     }
 
     async start() {
