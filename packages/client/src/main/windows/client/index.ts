@@ -130,6 +130,23 @@ app.on("ready", async () => {
                     }
                 } catch {}
             }
+
+            // Fallback: if a plugin requests deep core modules (e.g. src/interfaces/..., utilities/...)
+            // serve core.js so module imports never 404
+            if (filePart.startsWith('src/') || filePart.startsWith('core/') || filePart.includes('plugin.class') || filePart.includes('pluginSettings')) {
+                const coreCandidates = [
+                    path.join(__dirname, '../renderer/core.js'),
+                    path.join(__dirname, '../../static/core.js'),
+                ];
+                for (const corePath of coreCandidates) {
+                    if (fs.existsSync(corePath)) {
+                        return new Response(fs.readFileSync(corePath), {
+                            headers: { 'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*' }
+                        });
+                    }
+                }
+            }
+
             return new Response('CamelKit asset not found: ' + filePart, { status: 404 });
         }
 

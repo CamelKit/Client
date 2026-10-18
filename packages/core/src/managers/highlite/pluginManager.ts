@@ -201,7 +201,7 @@ export class PluginManager {
                 if (managed?.instance) continue;
 
                 const blob = installedPlugin.blob as Blob;
-                const url = URL.createObjectURL(blob);
+                const url = await this.createPluginModuleUrl(blob);
                 try {
                     const pluginModule = await import(/* @vite-ignore */ url);
                     const pluginClass = pluginModule.default;
@@ -618,7 +618,7 @@ export class PluginManager {
         const installedPlugin = await this.databaseManager.database.get('plugins', key);
         if (installedPlugin) {
             const blob = installedPlugin.blob as Blob;
-            const url = URL.createObjectURL(blob);
+            const url = await this.createPluginModuleUrl(blob);
             try {
                 const pluginModule = await import(url);
                 const pluginClass = pluginModule.default;
@@ -675,7 +675,9 @@ export class PluginManager {
             const expected = (config.asset_sha ?? '').toLowerCase();
             if (hex !== expected) throw new Error(`[CamelKit] Asset sha mismatch for ${this.getPluginTitle(config)}. expected=${expected} actual=${hex}`);
         }
-        const blob = new Blob([buffer], { type: 'application/javascript' });
+        const rawCode = new TextDecoder().decode(buffer);
+        const normalized = this.normalizePluginCode(rawCode);
+        const blob = new Blob([normalized], { type: 'application/javascript' });
         const url = URL.createObjectURL(blob);
         const key = this.getPluginKey(config);
         const managed = this.managedPlugins.find((mp) => this.getPluginKey(mp.config) === key);
@@ -684,6 +686,27 @@ export class PluginManager {
             managed.url = url;
         }
         return url;
+    }
+
+    public normalizePluginCode(rawCode: string): string {
+        let code = rawCode;
+        // Normalize any deep internal imports or variant package names to the root '@camelkit/core'
+        code = code.replace(/(?:from|import)\s+['"]@(evillite|ryelite|highlite|camelkit)\/core(?:\/[^'"]+)?['"]/g, (match) => {
+            return match.startsWith('from') ? 'from "@camelkit/core"' : 'import "@camelkit/core"';
+        });
+        code = code.replace(/import\s*\(\s*['"]@(evillite|ryelite|highlite|camelkit)\/core(?:\/[^'"]+)?['"]\s*\)/g, 'import("@camelkit/core")');
+        return code;
+    }
+
+    public async createPluginModuleUrl(blob: Blob): Promise<string> {
+        try {
+            const rawText = await blob.text();
+            const normalized = this.normalizePluginCode(rawText);
+            const normalizedBlob = new Blob([normalized], { type: 'application/javascript' });
+            return URL.createObjectURL(normalizedBlob);
+        } catch {
+            return URL.createObjectURL(blob);
+        }
     }
 
     private async sha256Hex(buffer: ArrayBuffer): Promise<string> {
