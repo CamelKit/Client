@@ -5,12 +5,13 @@
 
 package-lock.json
 
-# Don't track local test plugins in the repository (keep directory tracked with .gitkeep & README.md)
+# Don't track local test plugins or runtime data in the repository (keep directory tracked with .gitkeep & README.md)
 src/renderer/client/plugins/*
 !src/renderer/client/plugins/.gitkeep
 !src/renderer/client/plugins/README.md
 !src/renderer/client/plugins/data/
-!src/renderer/client/plugins/data/**
+src/renderer/client/plugins/data/*
+!src/renderer/client/plugins/data/.gitkeep
 
 # We use Yarn at production, so we don't want to keep package-lock.json from developers
 .package-lock.json
