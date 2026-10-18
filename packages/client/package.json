@@ -2,7 +2,7 @@
   "name": "@camelkit/client",
   "productName": "CamelKit",
   "desktopName": "camelkit.desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A RuneLite-esque Client for the game EvilQuest",
   "homepage": "https://github.com/CamelKit/Client#readme",
   "engines": {
