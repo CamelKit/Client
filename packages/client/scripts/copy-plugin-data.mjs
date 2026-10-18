@@ -33,3 +33,16 @@ if (existsSync(iconsSrc)) {
     cpSync(iconsSrc, rendererIconsDest, { recursive: true });
     console.log('[build] copied static icons -> out/main/icons and out/renderer/icons');
 }
+
+// Stage core.js from packages/core/dist/index.js so local import maps resolve without CDN
+const coreSrc = resolve(here, '..', '..', 'core', 'dist', 'index.js');
+if (existsSync(coreSrc)) {
+    const staticCoreDest = resolve(here, '..', 'static', 'core.js');
+    const outCoreDest = resolve(here, '..', 'out', 'renderer', 'core.js');
+    mkdirSync(resolve(here, '..', 'static'), { recursive: true });
+    cpSync(coreSrc, staticCoreDest);
+    mkdirSync(resolve(here, '..', 'out', 'renderer'), { recursive: true });
+    cpSync(coreSrc, outCoreDest);
+    console.log('[build] staged core.js -> static/core.js and out/renderer/core.js');
+}
+

@@ -82,6 +82,6 @@ Pushing a `core-v*` tag triggers `.github/workflows/publish-core.yml`:
 1. Executes `scripts/guard-input-fabrication.mjs` (anti-bot security check).
 2. Compiles `@camelkit/core` (ESM bundle + TypeScript `.d.ts` declaration maps).
 3. Verifies version matching between tag and `packages/core/package.json`.
-4. Publishes `@camelkit/core` to the public NPM registry using secret `NPM_TOKEN`.
+4. Publishes `@camelkit/core` to the public NPM registry via tokenless Trusted Publishing (OIDC `id-token: write`) with verified package provenance.
 5. Publishes a GitHub Release documenting the new core version.
 

@@ -187,11 +187,11 @@ async function waitForCdp(port: number, timeoutMs = 15000): Promise<string> {
     throw new Error('Chrome CDP did not come up: ' + String(lastErr));
 }
 
-/** The evilquest.net page target's WS endpoint (for Runtime.evaluate against its DOM). */
+/** The game page target's WS endpoint (for Runtime.evaluate against its DOM). */
 async function getPageWs(port: number): Promise<string | null> {
     const res = await fetch(`http://127.0.0.1:${port}/json`);
     const list = (await res.json()) as Array<{ type: string; url: string; webSocketDebuggerUrl?: string }>;
-    const page = list.find((t) => t.type === 'page' && /evilquest\.net/.test(t.url || '') && t.webSocketDebuggerUrl);
+    const page = list.find((t) => t.type === 'page' && /(?:memoriesofmagic\.com|evilquest\.net)/.test(t.url || '') && t.webSocketDebuggerUrl);
     return page?.webSocketDebuggerUrl ?? null;
 }
 
@@ -226,7 +226,7 @@ function cleanupChrome() {
 }
 
 async function injectCookies(cookies: CdpCookie[]): Promise<string[]> {
-    const wanted = cookies.filter((c) => /evilquest\.net$/.test(c.domain.replace(/^\./, '')));
+    const wanted = cookies.filter((c) => /(?:memoriesofmagic\.com|evilquest\.net)$/.test(c.domain.replace(/^\./, '')));
     const set: string[] = [];
     for (const c of wanted) {
         const host = c.domain.replace(/^\./, '');

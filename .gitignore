@@ -85,6 +85,7 @@ dist
 dist-tsc
 out
 build
+packages/client/static/core.js
 
 # Gatsby files
 .cache/

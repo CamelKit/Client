@@ -9,6 +9,8 @@ package-lock.json
 src/renderer/client/plugins/*
 !src/renderer/client/plugins/.gitkeep
 !src/renderer/client/plugins/README.md
+!src/renderer/client/plugins/data/
+!src/renderer/client/plugins/data/**
 
 # We use Yarn at production, so we don't want to keep package-lock.json from developers
 .package-lock.json

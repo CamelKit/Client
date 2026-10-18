@@ -28,9 +28,8 @@ log.initialize({ spyRendererConsole: true });
 log.transports.console.level = 'info';
 log.transports.file.level = 'debug';
 
-// Store logs directly in the shared workspace repository logs/ folder so the Linux VM has full, real-time logging
-const repoRoot = resolve(__dirname, '../../../../');
-const logsDir = join(repoRoot, 'logs');
+// Store logs directly in the shared workspace repository logs/ folder in dev; use app.getPath('logs') when packaged
+const logsDir = app.isPackaged ? app.getPath('logs') : join(resolve(__dirname, '../../../../'), 'logs');
 if (!existsSync(logsDir)) {
     try { mkdirSync(logsDir, { recursive: true }); } catch (e) {}
 }

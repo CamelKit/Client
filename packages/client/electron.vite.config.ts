@@ -17,6 +17,20 @@ function copyStaticIconsPlugin() {
   }
 }
 
+function stageCorePlugin() {
+  return {
+    name: 'stage-core',
+    buildStart() {
+      const coreDist = resolve(__dirname, '../core/dist/index.js');
+      const staticDest = resolve(__dirname, 'static/core.js');
+      if (existsSync(coreDist)) {
+        mkdirSync(resolve(__dirname, 'static'), { recursive: true });
+        cpSync(coreDist, staticDest);
+      }
+    }
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
 
@@ -35,7 +49,7 @@ export default defineConfig(({ mode }) => {
       plugins: [externalizeDepsPlugin()]
     },
     renderer: {
-      plugins: [],
+      plugins: [stageCorePlugin()],
       resolve: {
         alias: [
           { find: '@static', replacement: resolve(__dirname, 'static') },

@@ -127,6 +127,16 @@ localStorage.removeItem = function (key: string) {
         } catch {
             try { window.electron.ipcRenderer.send('oauth:logged-out'); } catch { /* ignore */ }
         }
+        try {
+            const hi = (window as any).highliteInstance;
+            if (hi?.stopHook) {
+                hi.stopHook('logout');
+            }
+        } catch (e) {
+            console.warn('[CamelKit] Error during logout stopHook:', e);
+        }
+        (window as any).highliteInstanceStarted = false;
+        (window as any).__eqPluginsStarting = false;
     }
     return _eqRemoveItem(key);
 };
@@ -197,6 +207,12 @@ async function obtainGameClient() {
             if (hm) {
                 Reflector.bindClassHooks(hm);
                 Reflector.bindEnumHooks(hm);
+                try {
+                    const hi = (window as any).highliteInstance;
+                    if (hi?.bindLifecycleHooks) {
+                        hi.bindLifecycleHooks();
+                    }
+                } catch { /* ignore */ }
             }
             const bound = Object.keys((document as any).highlite?.gameHooks || {});
             console.log('[CamelKit] Reflector bound:', bound.join(',') || '(none)');
