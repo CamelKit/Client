@@ -16,8 +16,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,8 +29,8 @@ import java.util.regex.Pattern;
  * The Android analog of the desktop client's Electron protocol.handle('https').
  *
  * Two jobs, both via intercepting WebView resource loads:
- *   1. Serve EvilLite's own renderer from app assets under the real evilquest.net origin
- *      (so the page is genuinely https://evilquest.net — cookies/WebSocket stay same-origin).
+ *   1. Serve EvilLite's own renderer from app assets under the real game origin
+ *      (so the page is genuinely https://memoriesofmagic.com — cookies/WebSocket stay same-origin).
  *   2. Rewrite every game .js to append the class-exposure shim the Reflector needs
  *      (document.client.set(<Class>, <Class>) + window.__eqSourceModules.push(...)).
  *      That rewrite is the whole reason hooks/plugins work; ported from the Electron handler.
@@ -38,7 +42,18 @@ import java.util.regex.Pattern;
  * UA/Client-Hint normalisation (reCAPTCHA) and asset MIME coverage need on-device validation.
  */
 public class EvilLiteWebViewClient extends BridgeWebViewClient {
-    private static final Pattern CLASS_RE = Pattern.compile("\\bclass\\s+([A-Za-z0-9_]+)");
+    private static final Pattern CLASS_RE = Pattern.compile("\\bclass\\s+([A-Za-z0-9_$]+)");
+    private static final Pattern OBJ_RE = Pattern.compile("(?:const|let|var|,)\\s*([A-Za-z0-9_$]+)\\s*=\\s*[\\{\\[]");
+    private static final Pattern ENUM_RE = Pattern.compile("\\b([A-Za-z0-9_$]+)\\s*\\|\\|\\s*\\(\\1\\s*=\\s*\\{\\}\\)");
+
+    private static final Set<String> JS_RESERVED = new HashSet<>(Arrays.asList(
+        "break", "case", "catch", "class", "const", "continue", "debugger", "default",
+        "delete", "do", "else", "export", "extends", "finally", "for", "function",
+        "if", "import", "in", "instanceof", "new", "return", "super", "switch",
+        "this", "throw", "try", "typeof", "var", "void", "while", "with", "yield",
+        "enum", "implements", "interface", "let", "package", "private", "protected",
+        "public", "static", "await", "null", "true", "false", "NaN", "undefined"
+    ));
 
     // The renderer is built for Electron and expects the @electron-toolkit preload globals
     // (window.electron / settings / screenshot via exposeInMainWorld). A WebView has no preload,
@@ -94,12 +109,12 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
 
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-        // Keep evilquest.net navigations (incl. the post-login window.location.reload() and the
+        // Keep game navigations (incl. the post-login window.location.reload() and the
         // SPA's own routing) INSIDE the WebView, where our interceptor serves them. Capacitor's
-        // default treats evilquest.net as "external" and would punt it to a real browser — which
+        // default treats external domains as "external" and would punt to a real browser — which
         // has no interceptor, so client.html 404s and the in-app client never logs in.
         String host = request.getUrl().getHost();
-        if ("evilquest.net".equals(host)) return false; // false = let the WebView load it
+        if ("memoriesofmagic.com".equals(host) || "evilquest.net".equals(host)) return false; // false = let the WebView load it
         return super.shouldOverrideUrlLoading(view, request);
     }
 
@@ -108,7 +123,8 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
         Uri url = request.getUrl();
         String host = url.getHost();
         String path = url.getPath();
-        if ("evilquest.net".equals(host) && path != null) {
+        boolean isGameHost = "memoriesofmagic.com".equals(host) || "evilquest.net".equals(host);
+        if (isGameHost && path != null) {
 
             // 1. CamelKit / EvilLite's own renderer files, served from bundled assets.
             boolean isCamelKit = path.startsWith("/__camelkit__/");
@@ -149,12 +165,14 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
     }
 
     private WebResourceResponse rewriteGameJs(String fullUrl) throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) new URL(fullUrl).openConnection();
+        URL parsedUrl = new URL(fullUrl);
+        String host = parsedUrl.getHost();
+        HttpURLConnection conn = (HttpURLConnection) parsedUrl.openConnection();
         conn.setRequestMethod("GET");
         conn.setInstanceFollowRedirects(true);
         String cookie = CookieManager.getInstance().getCookie(fullUrl);
         if (cookie != null) conn.setRequestProperty("Cookie", cookie);
-        conn.setRequestProperty("Referer", "https://evilquest.net/");
+        conn.setRequestProperty("Referer", "https://" + host + "/");
 
         StringBuilder bodyBuf = new StringBuilder();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
@@ -164,13 +182,31 @@ public class EvilLiteWebViewClient extends BridgeWebViewClient {
         }
         String src = bodyBuf.toString();
 
+        Set<String> symbols = new LinkedHashSet<>();
+        Matcher m1 = CLASS_RE.matcher(src);
+        while (m1.find()) {
+            String sym = m1.group(1);
+            if (!JS_RESERVED.contains(sym)) symbols.add(sym);
+        }
+        Matcher m2 = OBJ_RE.matcher(src);
+        while (m2.find()) {
+            String sym = m2.group(1);
+            if (!JS_RESERVED.contains(sym)) symbols.add(sym);
+        }
+        Matcher m3 = ENUM_RE.matcher(src);
+        while (m3.find()) {
+            String sym = m3.group(1);
+            if (!JS_RESERVED.contains(sym)) symbols.add(sym);
+        }
+
         // Same shim the Electron handler injects (see windows/client/index.ts).
         StringBuilder sb = new StringBuilder(src);
         sb.append("\nif (!document.client) document.client = new Map();\n");
-        Matcher m = CLASS_RE.matcher(src);
-        while (m.find()) {
-            String cls = m.group(1);
-            sb.append("try { document.client.set('").append(cls).append("', ").append(cls).append("); } catch(e){}\n");
+        for (String sym : symbols) {
+            sb.append("try { if (typeof ").append(sym).append(" !== 'undefined') { const _c = document.client.get('")
+              .append(sym).append("'); if (!_c || (typeof ").append(sym).append(" === 'function' && ")
+              .append(sym).append(".prototype)) document.client.set('").append(sym).append("', ")
+              .append(sym).append("); } } catch(e){}\n");
         }
         sb.append("if (!window.__eqSourceCode) window.__eqSourceCode = \"\";\n");
         sb.append("window.__eqSourceCode += ").append(jsString(src + "\n")).append(";\n");

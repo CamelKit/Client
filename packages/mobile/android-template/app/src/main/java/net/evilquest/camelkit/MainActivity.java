@@ -16,7 +16,7 @@ import com.getcapacitor.BridgeActivity;
  * the WebView straight to the EvilLite entry URL.
  */
 public class MainActivity extends BridgeActivity {
-    static final String ENTRY_URL = "https://evilquest.net/__camelkit__/client.html";
+    static final String ENTRY_URL = "https://memoriesofmagic.com/__camelkit__/client.html";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {

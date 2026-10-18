@@ -40,13 +40,14 @@ import java.util.UUID;
  * window.__eqNativeResolve(callbackId, resultJson).
  */
 public class OAuthBridge {
-    private static final String BASE = "https://evilquest.net";
+    private static final String BASE = "https://memoriesofmagic.com";
     private static final String AUTHORIZE = BASE + "/oauth/authorize";
     private static final String TOKEN = BASE + "/oauth/token";
     private static final String REVOKE = BASE + "/oauth/revoke";
     private static final String SCOPE = "game";
     private static final String CLIENT_ID = "evillite-dev"; // matches the desktop dev client
     private static final String PREFS = "evillite_oauth";
+    private static final long AUTO_LOGIN_WINDOW_MS = 5 * 60 * 1000L; // 5 min auto-login expiry matching desktop
 
     private final Context ctx;
     private final WebView webView;
@@ -78,6 +79,11 @@ public class OAuthBridge {
     public void autoLogin(final String cbId) {
         new Thread(() -> {
             if (sessionToken != null) { resolve(cbId, okCached()); return; }
+            long lastActive = prefs().getLong("last_active", 0);
+            if (System.currentTimeMillis() - lastActive > AUTO_LOGIN_WINDOW_MS) {
+                resolve(cbId, reason("session-expired"));
+                return;
+            }
             String refresh = prefs().getString("refresh_token", null);
             if (refresh == null) { resolve(cbId, reason("no-refresh-token")); return; }
             try {
