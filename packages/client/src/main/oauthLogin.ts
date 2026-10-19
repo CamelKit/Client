@@ -141,28 +141,75 @@ interface TokenResult {
     expires_in?: number;
 }
 
+const WORLD_URLS = [
+    'https://memoriesofmagic.com',
+    'https://world2.memoriesofmagic.com',
+];
+
 async function persistSetCookies(setCookies: string[]): Promise<void> {
+    // Clear any stale parent-domain cookies so they don't shadow host-only world cookies
+    try {
+        const existing = await session.defaultSession.cookies.get({});
+        for (const c of existing) {
+            if ((c.name === 'eq_ws_session' || c.name === 'eq_device_id') && c.domain?.startsWith('.')) {
+                await session.defaultSession.cookies.remove(`https://${c.domain.replace(/^\./, '')}`, c.name).catch(() => {});
+            }
+        }
+    } catch {}
+
     for (const raw of setCookies) {
         const parts = raw.split(';').map((s) => s.trim());
         const [name, ...rest] = parts[0].split('=');
-        const details: Electron.CookiesSetDetails = {
-            url: BASE,
-            name: name.trim(),
-            value: rest.join('=').trim(),
-            secure: parts.some((p) => /^secure$/i.test(p)),
-            httpOnly: parts.some((p) => /^httponly$/i.test(p)),
-            domain: '.memoriesofmagic.com',
-        };
+        const cookieName = name.trim();
+        const cookieVal = rest.join('=').trim();
+        const isSecure = parts.some((p) => /^secure$/i.test(p));
+        const isHttpOnly = parts.some((p) => /^httponly$/i.test(p));
+
         const maxAge = parts.find((p) => /^max-age=/i.test(p));
         const expires = parts.find((p) => /^expires=/i.test(p));
+        let expirationDate: number | undefined = undefined;
         if (maxAge) {
             const secs = parseInt(maxAge.split('=')[1], 10);
-            if (!isNaN(secs)) details.expirationDate = Date.now() / 1000 + secs;
+            if (!isNaN(secs)) expirationDate = Date.now() / 1000 + secs;
         } else if (expires) {
             const d = new Date(expires.split('=').slice(1).join('='));
-            if (!isNaN(d.getTime())) details.expirationDate = d.getTime() / 1000;
+            if (!isNaN(d.getTime())) expirationDate = d.getTime() / 1000;
         }
-        await session.defaultSession.cookies.set(details).catch(() => {});
+
+        // On World 2, cookies are stored under https://world2.memoriesofmagic.com (host-only)
+        // instead of https://memoriesofmagic.com for World 1. Store host-only cookies under each world.
+        for (const worldUrl of WORLD_URLS) {
+            const details: Electron.CookiesSetDetails = {
+                url: worldUrl,
+                name: cookieName,
+                value: cookieVal,
+                path: '/',
+                secure: isSecure,
+                httpOnly: isHttpOnly,
+                sameSite: 'strict',
+            };
+            if (expirationDate !== undefined) details.expirationDate = expirationDate;
+            await session.defaultSession.cookies.set(details).catch((err) => {
+                console.warn(`[OAuth] failed to set cookie ${cookieName} for ${worldUrl}:`, err);
+            });
+        }
+    }
+
+    // Ensure eq_device_id is also present for all world URLs
+    const store = readStore();
+    if (store.device_id) {
+        for (const worldUrl of WORLD_URLS) {
+            await session.defaultSession.cookies.set({
+                url: worldUrl,
+                name: 'eq_device_id',
+                value: store.device_id,
+                path: '/',
+                secure: true,
+                httpOnly: true,
+                sameSite: 'strict',
+                expirationDate: Date.now() / 1000 + 365 * 86400,
+            }).catch(() => {});
+        }
     }
 }
 
@@ -295,8 +342,16 @@ export function clearOAuthSession(): void {
             bypassCustomProtocolHandlers: true,
         } as any).catch(() => {});
     }
-    for (const host of ['https://memoriesofmagic.com', 'https://world2.memoriesofmagic.com', 'https://.memoriesofmagic.com']) {
-        for (const name of ['eq_ws_session', 'eq_device_id']) {
+    session.defaultSession.cookies.get({}).then((allCookies) => {
+        for (const c of allCookies) {
+            if (['eq_ws_session', 'eq_device_id', 'eq_preauth'].includes(c.name)) {
+                const domain = c.domain?.replace(/^\./, '') || 'memoriesofmagic.com';
+                session.defaultSession.cookies.remove(`https://${domain}${c.path || '/'}`, c.name).catch(() => {});
+            }
+        }
+    }).catch(() => {});
+    for (const host of ['https://memoriesofmagic.com', 'https://world2.memoriesofmagic.com']) {
+        for (const name of ['eq_ws_session', 'eq_device_id', 'eq_preauth']) {
             session.defaultSession.cookies.remove(host, name).catch(() => {});
         }
     }

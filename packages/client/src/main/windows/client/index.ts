@@ -184,13 +184,7 @@ app.on("ready", async () => {
             const fullUrl = request.url;
             const isApi = url.pathname.startsWith('/api/') || url.pathname === '/play';
             const isAsset = url.pathname.startsWith('/assets/');
-
-            // In-game logout: drop our OAuth session so the silent auto-login on the
-            // following reload doesn't immediately log the user back in.
-            if (url.pathname === '/api/logout') {
-                console.log('[OAuth] /api/logout — clearing stored session');
-                clearOAuthSession();
-            }
+            const isLogout = url.pathname === '/api/logout';
 
             if (isAsset) {
                 console.log(`[Protocol-ASSET] ${request.method} ${fullUrl.slice(0, 120)}`);
@@ -198,18 +192,34 @@ app.on("ready", async () => {
 
             try {
                 // Inject session cookies (matches host and shared parent-domain cookies)
+                // Deduplicate so host-specific cookies (e.g. world2.memoriesofmagic.com) take precedence
                 const cookies = await session.defaultSession.cookies.get({ url: fullUrl });
-                const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+                const cookieMap = new Map<string, string>();
+                const sortedCookies = [...cookies].sort((a, b) => {
+                    const aHost = a.domain === url.hostname || a.domain === `.${url.hostname}`;
+                    const bHost = b.domain === url.hostname || b.domain === `.${url.hostname}`;
+                    if (aHost && !bHost) return 1;
+                    if (!aHost && bHost) return -1;
+                    return 0;
+                });
+                for (const c of sortedCookies) {
+                    cookieMap.set(c.name, c.value);
+                }
+                const cookieHeader = Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
 
                 if (isApi) {
                     console.log(`[Protocol] ${request.method} ${fullUrl}`);
-                    console.log(`[Protocol] cookies sent (${cookies.length}): ${cookies.map(c => c.name).join(', ') || 'none'}`);
+                    console.log(`[Protocol] cookies sent (${cookieMap.size}): ${Array.from(cookieMap.keys()).join(', ') || 'none'}`);
                 }
 
                 const outHeaders = new Headers(request.headers);
                 if (cookieHeader) outHeaders.set('Cookie', cookieHeader);
                 outHeaders.set('Origin', `https://${url.hostname}`);
-                outHeaders.set('Referer', `https://${url.hostname}/`);
+                if (isApi || url.pathname === '/play') {
+                    outHeaders.set('Referer', `https://${url.hostname}/play`);
+                } else {
+                    outHeaders.set('Referer', `https://${url.hostname}/`);
+                }
                 
                 let outUa = outHeaders.get('User-Agent') || '';
                 if (outUa) {
@@ -230,22 +240,44 @@ app.on("ready", async () => {
                     console.log(`[Protocol] response ${response.status} for ${fullUrl}`);
                 }
 
+                if (isLogout) {
+                    // Clear local OAuth session when logout succeeds or if session was already unauthorized/expired (401).
+                    // If blocked by gameplay rules (e.g. 400/403 for combat), keep the session intact.
+                    if (response.status < 400 || response.status === 401) {
+                        console.log(`[OAuth] /api/logout (${response.status}) — clearing stored session`);
+                        clearOAuthSession();
+                    }
+                }
+
                 // Persist Set-Cookie headers
                 const setCookieValues = response.headers.getSetCookie?.() ?? [];
                 for (const raw of setCookieValues) {
                     const parts = raw.split(';').map(s => s.trim());
                     const [name, ...rest] = parts[0].split('=');
-                    if (isApi) console.log(`[Protocol] storing cookie: ${name.trim()}`);
-                    const isMoM = url.hostname.endsWith('memoriesofmagic.com');
-                    const isEq = url.hostname.endsWith('evilquest.net');
+                    if (isApi) console.log(`[Protocol] storing cookie: ${name.trim()} for ${url.hostname}`);
                     const cookieDetails: Electron.CookiesSetDetails = {
                         url: `https://${url.hostname}`,
                         name: name.trim(),
                         value: rest.join('=').trim(),
+                        path: '/',
                         httpOnly: parts.some(p => p.toLowerCase() === 'httponly'),
                         secure: parts.some(p => p.toLowerCase() === 'secure'),
-                        domain: isMoM ? '.memoriesofmagic.com' : (isEq ? '.evilquest.net' : undefined),
                     };
+                    const domainPart = parts.find(p => p.toLowerCase().startsWith('domain='));
+                    if (domainPart) {
+                        cookieDetails.domain = domainPart.split('=')[1].trim();
+                    }
+                    const pathPart = parts.find(p => p.toLowerCase().startsWith('path='));
+                    if (pathPart) {
+                        cookieDetails.path = pathPart.split('=')[1].trim();
+                    }
+                    const sameSitePart = parts.find(p => p.toLowerCase().startsWith('samesite='));
+                    if (sameSitePart) {
+                        const s = sameSitePart.split('=')[1].trim().toLowerCase();
+                        if (s === 'strict') cookieDetails.sameSite = 'strict';
+                        else if (s === 'lax') cookieDetails.sameSite = 'lax';
+                        else if (s === 'none') cookieDetails.sameSite = 'no_restriction';
+                    }
                     const maxAgePart = parts.find(p => p.toLowerCase().startsWith('max-age='));
                     const expiresPart = parts.find(p => p.toLowerCase().startsWith('expires='));
                     if (maxAgePart) {
@@ -325,6 +357,19 @@ app.on("ready", async () => {
                     } else {
                         console.log(`[Protocol] response body: ${body.slice(0, 600)}`);
                     }
+
+                    // If the server returned 401 on /api/logout, the session was already expired or invalid
+                    // on the server. Return 200 to the game client so it can proceed with clearing local storage
+                    // and returning to the login screen, rather than getting stuck with "Logout blocked".
+                    if (isLogout && response.status === 401) {
+                        console.log('[OAuth] /api/logout returned 401 (session already invalid on server) — allowing client logout');
+                        return new Response(JSON.stringify({ ok: true }), {
+                            headers: newHeaders,
+                            status: 200,
+                            statusText: 'OK',
+                        });
+                    }
+
                     return new Response(body, { headers: newHeaders, status: response.status, statusText: response.statusText });
                 } else {
                     // Binary resources (images, fonts, audio)
@@ -332,6 +377,15 @@ app.on("ready", async () => {
                     return new Response(body, { headers: newHeaders, status: response.status, statusText: response.statusText });
                 }
             } catch (err) {
+                if (isLogout) {
+                    console.log('[OAuth] /api/logout fetch failed — clearing stored session anyway');
+                    clearOAuthSession();
+                    return new Response(JSON.stringify({ ok: true }), {
+                        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+                        status: 200,
+                        statusText: 'OK',
+                    });
+                }
                 console.error('[Protocol] Failed to fetch', fullUrl, err);
                 return new Response('Fetch failed', { status: 500 });
             }
@@ -466,9 +520,18 @@ export async function createClientWindow() {
     });
 
     mainWindow.setMenu(null);
-    // Load via https:// so the page origin is genuinely https://memoriesofmagic.com
-    // Our protocol.handle('https') intercepts /__camelkit__/ (and legacy /__evillite__/) and serves local files
-    mainWindow.loadURL('https://memoriesofmagic.com/__camelkit__/client.html');
+    // Load via https:// so the page origin is genuinely https://memoriesofmagic.com or https://world2.memoriesofmagic.com
+    // Our protocol.handle('https') intercepts /__camelkit__/ (and legacy /__evillite__/) and serves local files.
+    // Check if the user was last in World 2 (mom_last_world=2) to load World 2 directly.
+    let startUrl = 'https://memoriesofmagic.com/__camelkit__/client.html';
+    try {
+        const lastWorldCookies = await session.defaultSession.cookies.get({ name: 'mom_last_world' });
+        const lastWorld2 = lastWorldCookies.find(c => c.value === '2');
+        if (lastWorld2) {
+            startUrl = 'https://world2.memoriesofmagic.com/__camelkit__/client.html?world=2';
+        }
+    } catch {}
+    mainWindow.loadURL(startUrl);
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);
@@ -529,10 +592,12 @@ export async function createClientWindow() {
                 try {
                     const wsUrl = new URL(details.url);
                     details.requestHeaders['Origin'] = `https://${wsUrl.hostname}`;
-                    details.requestHeaders['Referer'] = `https://${wsUrl.hostname}/`;
+                    delete details.requestHeaders['Referer'];
+                    delete details.requestHeaders['referer'];
                 } catch {
                     details.requestHeaders['Origin'] = 'https://memoriesofmagic.com';
-                    details.requestHeaders['Referer'] = 'https://memoriesofmagic.com/';
+                    delete details.requestHeaders['Referer'];
+                    delete details.requestHeaders['referer'];
                 }
             }
 

@@ -158,6 +158,15 @@ try {
     console.warn('[CamelKit] OAuth auto-login error', e);
 }
 
+// Sync mom_last_world from URL parameter into localStorage (e.g. ?world=2)
+try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const worldParam = urlParams.get('world');
+    if (worldParam) {
+        localStorage.setItem('mom_last_world', worldParam);
+    }
+} catch {}
+
 // OAuth activity heartbeat: while the user is logged in + in-world, ping the main process
 // so it keeps the session "active". This is what lets a reload/reopen within 5 minutes
 // silently re-login (matching EvilQuest's AFK window); once these pings stop (app closed
