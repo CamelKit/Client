@@ -1,7 +1,9 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { resolve } from 'path'
 
-import { cpSync, mkdirSync, existsSync } from 'fs'
+import { cpSync, mkdirSync, existsSync, readFileSync } from 'fs'
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
 
 function copyStaticIconsPlugin() {
   return {
@@ -38,6 +40,7 @@ export default defineConfig(({ mode }) => {
     main: {
       plugins: [externalizeDepsPlugin(), copyStaticIconsPlugin()],
       define: {
+        __CAMELKIT_VERSION__: JSON.stringify(pkg.version),
         // Baked at build time. Only TRUE in the canonical CamelKit/Client CI build (set in
         // build.yml from github.repository). Fork/test builds get FALSE → the auto-updater stays
         // off so a build a dev is testing is never clobbered; canonical builds update from
@@ -50,6 +53,9 @@ export default defineConfig(({ mode }) => {
     },
     renderer: {
       plugins: [stageCorePlugin()],
+      define: {
+        __CAMELKIT_VERSION__: JSON.stringify(pkg.version),
+      },
       resolve: {
         alias: [
           { find: '@static', replacement: resolve(__dirname, 'static') },

@@ -1,4 +1,5 @@
 import { Plugin, SettingsTypes, PanelManager, abbreviateValue } from '@camelkit/core';
+import { version as clientVersion } from '../../../../package.json';
 
 interface DropItem {
   itemId: number;
@@ -72,6 +73,7 @@ function dist(x1: number, z1: number, x2: number, z2: number): number {
 export default class LootTrackerPlugin extends Plugin {
   pluginName = 'Loot Tracker';
   author = 'CamelKit';
+  version = typeof __CAMELKIT_VERSION__ !== 'undefined' ? __CAMELKIT_VERSION__ : clientVersion;
 
   private panelManager = new PanelManager();
   private menuIconElement: HTMLElement | null = null;
@@ -117,7 +119,7 @@ export default class LootTrackerPlugin extends Plugin {
       value: 3,
       min: 1,
       max: 8,
-      callback: () => {},
+      callback: () => { },
     };
 
     this.settings.dropWindowSeconds = {
@@ -126,21 +128,21 @@ export default class LootTrackerPlugin extends Plugin {
       value: 8,
       min: 3,
       max: 20,
-      callback: () => {},
+      callback: () => { },
     };
 
     this.settings.telemetryEndpoint = {
       text: 'Wiki Telemetry URL',
       type: SettingsTypes.text,
       value: 'https://api.camelkit.dev/telemetry/drops',
-      callback: () => {},
+      callback: () => { },
     };
 
     this.settings.resetSessionOnLogin = {
       text: 'Reset Session On Login',
       type: SettingsTypes.checkbox,
       value: false,
-      callback: () => {},
+      callback: () => { },
     };
   }
 
@@ -646,7 +648,7 @@ export default class LootTrackerPlugin extends Plugin {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client: 'CamelKit',
-          version: '0.1.4',
+          version: this.version,
           events: toSend,
         }),
       });

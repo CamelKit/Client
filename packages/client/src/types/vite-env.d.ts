@@ -14,3 +14,5 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /// <reference types="vite/client" />
+
+declare const __CAMELKIT_VERSION__: string;
