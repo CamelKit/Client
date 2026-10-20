@@ -68,11 +68,17 @@ export class SettingsManager {
     }
 
     async init() {
-        this.database = document.highlite.managers.DatabaseManager.database;
-        this.pluginList = document.highlite.managers.PluginManager.plugins;
+        if (!document.highlite?.managers?.DatabaseManager?.database) {
+            const dbm = document.highlite?.managers?.DatabaseManager;
+            if (dbm?.initDB) {
+                await dbm.initDB();
+            }
+        }
+        this.database = document.highlite?.managers?.DatabaseManager?.database;
+        this.pluginList = document.highlite?.managers?.PluginManager?.plugins ?? [];
         this.pluginList = this.pluginList.map(plugin => plugin.instance).filter((instance): instance is Plugin => instance !== undefined);
 
-        this.panelManager = document.highlite.managers.PanelManager;
+        this.panelManager = document.highlite?.managers?.PanelManager;
         this.username = resolveUsername();
         this.createMenu();
         this.isInitialized = true;
@@ -178,8 +184,22 @@ export class SettingsManager {
     }
 
     async registerPlugins() {
-        // TODO: This may need to be placed in a more explicit step.
-        this.databaseSettings = await this.database.get('settings', this.username);
+        if (!this.database) {
+            this.database = document.highlite?.managers?.DatabaseManager?.database;
+            if (!this.database) {
+                const dbm = document.highlite?.managers?.DatabaseManager;
+                if (dbm?.initDB) {
+                    await dbm.initDB();
+                    this.database = dbm.database;
+                }
+            }
+        }
+        if (this.database) {
+            this.databaseSettings = await this.database.get('settings', this.username);
+        } else {
+            console.warn('[Highlite] SettingsManager: database not available for registerPlugins');
+            this.databaseSettings = undefined;
+        }
 
         this.pluginList.sort((a, b) => 
             a.pluginName.localeCompare(b.pluginName, undefined, { sensitivity: 'base' })

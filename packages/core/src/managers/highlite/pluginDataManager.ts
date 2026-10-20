@@ -48,7 +48,13 @@ export class PluginDataManager {
         this.databaseManager = new DatabaseManager();
         this.username = resolveUsername();
 
-        const data = await this.databaseManager.database.get('data', this.username);
+        if (!this.databaseManager.database) {
+            await this.databaseManager.initDB();
+        }
+
+        const data = this.databaseManager.database
+            ? await this.databaseManager.database.get('data', this.username)
+            : null;
         this.inMemoryCache = data || {};
         this.initialized = true;
     }

@@ -9,6 +9,7 @@ package-lock.json
 src/renderer/client/plugins/*
 !src/renderer/client/plugins/.gitkeep
 !src/renderer/client/plugins/README.md
+!src/renderer/client/plugins/LootTrackerPlugin.ts
 !src/renderer/client/plugins/data/
 src/renderer/client/plugins/data/*
 !src/renderer/client/plugins/data/.gitkeep

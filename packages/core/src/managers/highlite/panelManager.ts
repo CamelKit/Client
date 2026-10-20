@@ -79,9 +79,13 @@ export class PanelManager {
     }
 
     requestMenuItem(icon: string, title: string) {
-        // Verify an equivalent icon does not exist
-        if (this.barContentPages[icon]) {
-            throw new Error(`[CamelKit] Bar Icon ${icon} already exists`);
+        // Verify an equivalent icon does not exist, cleaning it up if it does
+        if (this.barContentPages[icon] || this.barIcons[icon]) {
+            try {
+                this.removeMenuItem(icon);
+            } catch (e) {
+                console.warn(`[CamelKit] Cleaning up existing icon ${icon}:`, e);
+            }
         }
 
         const iconElement = document.createElement('div');
@@ -133,19 +137,28 @@ export class PanelManager {
     }
 
     removeMenuItem(icon: string) {
-        // Remove Icon and Content
-        if (!this.barIcons[icon] || !this.barContentPages[icon]) {
-            throw new Error(`[CamelKit] Bar Icon ${icon} does not exist`);
+        // Remove Icon and Content safely without throwing if already removed
+        if (!this.barIcons[icon] && !this.barContentPages[icon]) {
+            return;
         }
 
-        this.highliteBar?.removeChild(this.barIcons[icon]);
-        delete this.barIcons[icon];
+        const iconEl = this.barIcons[icon];
+        if (iconEl) {
+            if (iconEl.parentNode) {
+                iconEl.parentNode.removeChild(iconEl);
+            } else if (this.highliteBar?.contains(iconEl)) {
+                this.highliteBar.removeChild(iconEl);
+            }
+            delete this.barIcons[icon];
+        }
 
         const contentElement = this.barContentPages[icon];
-        if (contentElement && contentElement.parentNode) {
-            contentElement.parentNode.removeChild(contentElement);
+        if (contentElement) {
+            if (contentElement.parentNode) {
+                contentElement.parentNode.removeChild(contentElement);
+            }
+            delete this.barContentPages[icon];
         }
-        delete this.barContentPages[icon];
     }
 
     forceClose() {

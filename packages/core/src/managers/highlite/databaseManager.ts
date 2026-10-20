@@ -23,6 +23,7 @@ import type { HighliteSchema } from '../../interfaces/highlite/database/database
 export class DatabaseManager {
     private static instance: DatabaseManager;
     database!: IDBPDatabase<HighliteSchema>;
+    private initPromise: Promise<IDBPDatabase<HighliteSchema>> | null = null;
 
     constructor() {
         if (DatabaseManager.instance) {
@@ -38,30 +39,41 @@ export class DatabaseManager {
         document.highlite.managers.DatabaseManager = this;
     }
 
-    async initDB() {
-        this.database = await openDB<HighliteSchema>('HighliteDatabase', 4, {
-            upgrade(db, oldVersion) {
-                if (!db.objectStoreNames.contains('settings')) {
-                    db.createObjectStore('settings');
-                }
-                if (
-                    oldVersion < 2 &&
-                    !db.objectStoreNames.contains('drop_logs')
-                ) {
-                    db.createObjectStore('drop_logs');
-                }
-                if (oldVersion < 3) {
-                    db.createObjectStore("data");
-                    if (db.objectStoreNames.contains('settings')) {
-                        // Clear the settings store if it exists
-                        db.deleteObjectStore('settings');
-                        db.createObjectStore('settings');
-                    }
-                }
-                if (oldVersion < 4) {
-                    db.createObjectStore("plugins");
-                }
-            },
-        });
+    async initDB(): Promise<IDBPDatabase<HighliteSchema>> {
+        if (this.database) return this.database;
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = (async () => {
+            try {
+                this.database = await openDB<HighliteSchema>('HighliteDatabase', 4, {
+                    upgrade(db, oldVersion) {
+                        if (!db.objectStoreNames.contains('settings')) {
+                            db.createObjectStore('settings');
+                        }
+                        if (
+                            oldVersion < 2 &&
+                            !db.objectStoreNames.contains('drop_logs')
+                        ) {
+                            db.createObjectStore('drop_logs');
+                        }
+                        if (oldVersion < 3) {
+                            db.createObjectStore("data");
+                            if (db.objectStoreNames.contains('settings')) {
+                                // Clear the settings store if it exists
+                                db.deleteObjectStore('settings');
+                                db.createObjectStore('settings');
+                            }
+                        }
+                        if (oldVersion < 4) {
+                            db.createObjectStore("plugins");
+                        }
+                    },
+                });
+                return this.database;
+            } finally {
+                this.initPromise = null;
+            }
+        })();
+        return this.initPromise;
     }
 }

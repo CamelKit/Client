@@ -258,7 +258,8 @@ async function obtainGameClient() {
         // flake (e.g. when EvilQuest ships a new bundle) and we must NOT let that stop the
         // client from starting. window.gm.username is the reliable signal either way.
         const username = document.highlite?.gameHooks?.GameManager?.Instance?.username
-            ?? (window as any).gm?.username;
+            ?? (window as any).gm?.username
+            ?? localStorage.getItem('evilquest_username');
         if (!username) return; // not logged in yet — the login poller retries
 
         (window as any).__eqPluginsStarting = true;
@@ -309,11 +310,11 @@ async function obtainGameClient() {
         if ((window as any).__eqHooksBound) clearInterval(settleTimer);
     }, 300);
 
-    // Poller B: drive the login sequence. Runs until plugins have started (login can
-    // happen well after hooks bind, so this must outlive Poller A).
-    const loginTimer = setInterval(() => {
-        startPluginsOnce();
-        if ((window as any).highliteInstanceStarted) clearInterval(loginTimer);
+    // Poller B: drive the login sequence. Keeps running to support reconnects and world switches.
+    setInterval(() => {
+        if (!(window as any).highliteInstanceStarted) {
+            startPluginsOnce();
+        }
     }, 500);
 
     // Legacy signal: harmless nudge.

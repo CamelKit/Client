@@ -98,9 +98,18 @@ export class Highlite {
     // This is because we want to associate user-settings with the user account.
     async startHook(fnName: string, ...args: any[]) {
         if (this.pluginManager.isLoggedIn) return;
-        this.pluginManager.setLoginState(true);
 
         try {
+            if (!this.databaseManager.database) {
+                await this.databaseManager.initDB();
+            }
+            if (!this.databaseManager.database) {
+                console.error('[Highlite] Database could not be initialized in startHook');
+                return;
+            }
+
+            this.pluginManager.setLoginState(true);
+
             await this.settingsManager.init();
             await this.settingsManager.registerPlugins();
             await this.pluginDataManager.initialize();
@@ -117,6 +126,7 @@ export class Highlite {
             this.pluginManager.postInitAll();
             this.pluginManager.startAll();
         } catch (e) {
+            this.pluginManager.setLoginState(false);
             console.error('[Highlite] Error in startHook:', e);
         }
     }
@@ -128,6 +138,10 @@ export class Highlite {
         this.settingsManager.deinit();
         this.pluginManager.stopAll();
         this.pluginManager.setLoginState(false);
+        if (typeof window !== 'undefined') {
+            (window as any).highliteInstanceStarted = false;
+            (window as any).__eqPluginsStarting = false;
+        }
     }
 
     private registerLifecycleHook(targetClass: string, fnName: string, hookFn: (...args: any[]) => any) {

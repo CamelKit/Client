@@ -27,8 +27,16 @@ export function resolveUsername(): string {
     const gmName = hooks.GameManager?.Instance?.username;
     if (typeof gmName === 'string' && gmName) return gmName.toLowerCase();
 
+    const rawGmName = (window as any)?.gm?.username;
+    if (typeof rawGmName === 'string' && rawGmName) return rawGmName.toLowerCase();
+
     const emName = hooks.EntityManager?.Instance?._mainPlayer?._nameLowerCase;
     if (typeof emName === 'string' && emName) return emName;
+
+    try {
+        const stored = localStorage.getItem('evilquest_username');
+        if (stored) return stored.toLowerCase();
+    } catch {}
 
     console.warn('[CamelKit] could not resolve username — using "default" bucket');
     return 'default';
