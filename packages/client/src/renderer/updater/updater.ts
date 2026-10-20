@@ -51,13 +51,22 @@ window.electron.ipcRenderer.on('update-downloaded', _ => {
 });
 
 window.electron.ipcRenderer.on('update-available', (_, releaseInfo) => {
-    updateStatus.textContent = 'Update to ' + releaseInfo.releaseName + ' Available!';
+    const versionDisplay = releaseInfo.releaseName || (releaseInfo.version ? `v${releaseInfo.version}` : 'New Version');
+    updateStatus.textContent = 'Update to ' + versionDisplay + ' Available!';
     progressLoader.style.visibility = 'hidden';
     btnUpdateNow.style.display = 'block';
     btnUpdateLater.style.display = 'block';
     // Show release notes section (block layout in mobile, grid/column later)
     sectionUpdateChange.style.display = 'block';
-    releaseNotes.innerHTML = releaseInfo.releaseNotes;
+    if (typeof releaseInfo.releaseNotes === 'string') {
+        releaseNotes.innerHTML = releaseInfo.releaseNotes;
+    } else if (Array.isArray(releaseInfo.releaseNotes)) {
+        releaseNotes.innerHTML = releaseInfo.releaseNotes
+            .map((item: any) => `<h3>${item.version || ''}</h3><div>${item.note || ''}</div>`)
+            .join('');
+    } else {
+        releaseNotes.innerHTML = '<p>No release notes provided.</p>';
+    }
 });
 
 // When updateNow is clicked, send the install-update event to the main process

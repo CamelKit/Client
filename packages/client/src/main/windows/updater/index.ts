@@ -26,16 +26,16 @@ declare const __EVILLITE_CANONICAL__: boolean;
 
 async function configureAutoUpdater(autoUpdater: any) {
     autoUpdater.autoDownload = false; // Disable auto download to control it manually
+    autoUpdater.logger = log;
     await settingsService.load();
 
-    if (settingsService.getByName('Release Channel') == 'Beta') {
-        log.info('Using Beta channel for updates');
+    const releaseChannel = settingsService.getByName('Release Channel');
+    if (releaseChannel === 'Beta') {
+        log.info('[Updater] Using Beta channel for updates');
         autoUpdater.allowDowngrade = false;
         autoUpdater.allowPrerelease = true;
-    }
-
-    if (settingsService.getByName('Release Channel') === 'Stable') {
-        log.info('Using Stable channel for updates');
+    } else {
+        log.info('[Updater] Using Stable channel for updates');
         autoUpdater.allowDowngrade = true;
         autoUpdater.allowPrerelease = false;
     }
@@ -48,9 +48,13 @@ export async function createUpdateWindow() {
     let autoUpdater: any = null;
     if (app.isPackaged) {
         try {
-            const updaterModule = await import('electron-updater');
-            autoUpdater = updaterModule.autoUpdater;
-            await configureAutoUpdater(autoUpdater);
+            const updaterModule: any = await import('electron-updater');
+            autoUpdater = updaterModule.autoUpdater ?? updaterModule.default?.autoUpdater;
+            if (autoUpdater) {
+                await configureAutoUpdater(autoUpdater);
+            } else {
+                log.error('[Updater] autoUpdater instance not found on imported electron-updater module');
+            }
         } catch (e) {
             log.error('[Updater] Failed to load electron-updater:', e);
         }
@@ -145,12 +149,22 @@ export async function createUpdateWindow() {
 
         ipcMain.once('install-update', async () => {
             log.info('Installing update...');
-            autoUpdater.quitAndInstall();
+            try {
+                autoUpdater.quitAndInstall(true, true);
+            } catch (err) {
+                log.error('[Updater] quitAndInstall error:', err);
+                proceedToClient('quitAndInstall failed');
+            }
         });
 
         ipcMain.once('download-update', async () => {
             log.info('Downloading update...');
-            autoUpdater.downloadUpdate();
+            try {
+                await autoUpdater.downloadUpdate();
+            } catch (err) {
+                log.error('[Updater] downloadUpdate rejected:', err);
+                proceedToClient('downloadUpdate rejected');
+            }
         });
     }
 
