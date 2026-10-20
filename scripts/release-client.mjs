@@ -20,23 +20,25 @@ const args = process.argv.slice(2);
 const isHelp = args.some((a) => ['-h', '--help', 'help'].includes(a));
 const isBumpOnly = args.some((a) => ['--bump-only', '--no-commit'].includes(a));
 const isNoTag = args.some((a) => a === '--no-tag');
+const isForce = args.some((a) => a === '--force');
 
 const bumpType = args.find((a) => !a.startsWith('-')) || 'patch';
 
 if (isHelp) {
   console.log(`
 Usage:
-  pnpm release:client [patch | minor | major | <explicit-version>] [--no-tag]
+  pnpm release:client [patch | minor | major | <explicit-version>] [--no-tag] [--force]
   pnpm bump:client [patch | minor | major | <explicit-version>]
 
 Options:
   --bump-only, --no-commit  Only update packages/client/package.json without committing or tagging
   --no-tag                  Commit the version bump but do not create a git tag
+  --force                   Allow cutting a stable release tag from a non-main branch
 
 Examples:
   pnpm bump:client patch        # Update package.json: 0.0.1 -> 0.0.2 (no commit/tag)
   pnpm bump:client minor        # Update package.json: 0.0.1 -> 0.1.0
-  pnpm release:client patch     # Bumps to 0.0.2, commits and tags v0.0.2
+  pnpm release:client patch     # Bumps to 0.0.2, commits and tags v0.0.2 (must be on main or use --force)
   pnpm release:client 0.1.0     # Bumps to 0.1.0, commits and tags v0.1.0
 `);
   process.exit(0);
@@ -74,6 +76,27 @@ function bumpVersion(version, type) {
 
 const nextVersion = bumpVersion(currentVersion, bumpType);
 const tagName = `v${nextVersion}`;
+const isPrerelease = nextVersion.includes('-');
+const currentBranch = runOutput('git rev-parse --abbrev-ref HEAD') || 'dev';
+
+// Guard: Prevent cutting stable release tags from non-main branches (e.g. dev)
+if (!isBumpOnly && !isNoTag && !isPrerelease && currentBranch !== 'main' && !isForce) {
+  console.error(`
+❌ Error: Cannot cut a stable release tag (${tagName}) from branch '${currentBranch}'.
+Stable releases without a pre-release suffix (e.g. vX.Y.Z) must only be released from 'main'.
+
+Available alternatives:
+  1. Bump package.json on dev without tagging (pushing to dev auto-builds beta pre-releases):
+     pnpm bump:client ${bumpType}
+  2. Commit the bump without creating a git tag:
+     pnpm release:client ${bumpType} --no-tag
+  3. Release an explicit pre-release tag:
+     pnpm release:client ${nextVersion}-beta.1
+  4. Force release tag on '${currentBranch}':
+     pnpm release:client ${bumpType} --force
+`);
+  process.exit(1);
+}
 
 console.log(`\n📦 Bumping CamelKit Client version: ${currentVersion} -> ${nextVersion}`);
 
@@ -94,8 +117,6 @@ if (isBumpOnly) {
 }
 
 // 3. Git commit & tag
-const currentBranch = runOutput('git rev-parse --abbrev-ref HEAD') || 'dev';
-
 try {
   run(`git add "${clientPkgPath}"`);
   run(`git commit -m "chore(client): release v${nextVersion}"`);
