@@ -40,6 +40,7 @@
     "executableName": "camelkit",
     "copyright": "Copyright © 2026 CamelKit",
     "asar": true,
+    "compression": "maximum",
     "files": [
       "out/**/*.*",
       "!**/node_modules/electron/**",
@@ -121,7 +122,7 @@
       }
     },
     "nsis": {
-      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "static/icons/icon.ico",
@@ -129,7 +130,8 @@
       "uninstallDisplayName": "CamelKit",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "CamelKit"
+      "shortcutName": "CamelKit",
+      "differentialPackage": true
     }
   },
   "//deps-note": "Only packages the MAIN/PRELOAD process loads at runtime (externalized by electron-vite) belong here — electron-builder copies production deps into the app. Everything the RENDERER uses is bundled by Vite, so it lives in devDependencies and must NOT be added here (notably @babylonjs/core: ~348MB, loaded at runtime via the import map/CDN, not node_modules).",
