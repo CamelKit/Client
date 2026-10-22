@@ -15,7 +15,6 @@
 
 import { Highlite } from '@camelkit/core';
 import { Reflector } from '@camelkit/core';
-import { HighliteResources } from '@camelkit/core';
 import '@iconify/iconify';
 import '@static/css/index.css';
 import '@static/css/overrides.css';
@@ -28,6 +27,37 @@ import './helpers/titlebarHelpers.js';
 // https://memoriesofmagic.com/... which our protocol.handle('https') intercepts.
 // No fetch/XHR/createElement patching is needed for URL rewriting.
 
+
+// In fixed client size mode, make VisualViewport report the actual dimensions of #game-wrapper
+// (which accounts for the titlebar and plugin sidebar) rather than the entire Electron window.
+try {
+    const origWidthDesc = Object.getOwnPropertyDescriptor(VisualViewport.prototype, 'width');
+    const origHeightDesc = Object.getOwnPropertyDescriptor(VisualViewport.prototype, 'height');
+    if (origWidthDesc && origHeightDesc) {
+        Object.defineProperty(VisualViewport.prototype, 'width', {
+            get() {
+                const gw = document.getElementById('game-wrapper');
+                if (gw && document.documentElement.classList.contains('eq-fixed-client-size')) {
+                    return gw.clientWidth || origWidthDesc.get!.call(this);
+                }
+                return origWidthDesc.get!.call(this);
+            },
+            configurable: true,
+        });
+        Object.defineProperty(VisualViewport.prototype, 'height', {
+            get() {
+                const gw = document.getElementById('game-wrapper');
+                if (gw && document.documentElement.classList.contains('eq-fixed-client-size')) {
+                    return gw.clientHeight || origHeightDesc.get!.call(this);
+                }
+                return origHeightDesc.get!.call(this);
+            },
+            configurable: true,
+        });
+    }
+} catch (e) {
+    console.warn('[CamelKit] Failed to patch VisualViewport:', e);
+}
 
 // Window layout scaffold (titlebar + plugin sidebar). Built here — BEFORE the
 // body.appendChild patch below — so it uses the native appendChild. #main must exist
@@ -525,7 +555,7 @@ document.dispatchEvent(
 // resizes the #game-container, the canvas stretches and coordinates desync.
 // This forces the game engine to recalculate its resolution.
 const setupGameResizeObserver = () => {
-    const observer = new MutationObserver((mutations, obs) => {
+    const observer = new MutationObserver((_mutations, obs) => {
         const gameContainer = document.getElementById('game-wrapper');
         if (gameContainer) {
             obs.disconnect(); // Only need to attach once
@@ -535,6 +565,9 @@ const setupGameResizeObserver = () => {
                     gm.handleViewportResize();
                 } else if (gm && gm.scene) {
                     gm.scene.getEngine().resize();
+                }
+                if (document.documentElement.classList.contains('eq-fixed-client-size')) {
+                    window.dispatchEvent(new Event('resize'));
                 }
             });
             resizeObserver.observe(gameContainer);

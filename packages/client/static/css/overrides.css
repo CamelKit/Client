@@ -19,8 +19,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     flex-direction: row !important;
     border-top: 1px solid black !important;
 }
+/* Preserve CamelKit's body flex layout even when the game's fixed-client-size mode is active.
+   The game injects `html.eq-fixed-client-size body { display: flex; align-items: flex-start; justify-content: center; }`
+   which overrides `flex-direction: column` with row, causing the titlebar and main game area to sit side-by-side. */
+html.eq-fixed-client-size body,
 body {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    height: 100vh !important;
+    overflow: hidden !important;
     background: black;
+}
+
+.highlite_titlebar {
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 #body-container {
@@ -39,7 +54,17 @@ body {
     flex-direction: column !important;
 }
 
-#game-frame {
+/* In fixed client size mode, center the game frame shell inside CamelKit's game wrapper */
+html.eq-fixed-client-size #game-wrapper {
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+}
+
+/* In dynamic mode (default), the game frame fills the entire container.
+   In fixed mode, the game sets inline dimensions (width: 1200px, height: 920px) and scales with CSS transform,
+   so we must NOT override its width/height with 100%/auto. */
+html:not(.eq-fixed-client-size) #game-frame {
     width: 100% !important;
     min-width: unset !important;
     max-width: none !important;
@@ -52,6 +77,14 @@ body {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
+}
+
+html.eq-fixed-client-size #game-frame {
+    min-width: unset !important;
+    max-width: none !important;
+    min-height: unset !important;
+    max-height: none !important;
+    flex: none !important;
 }
 
 #game-canvas {
