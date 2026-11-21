@@ -147,6 +147,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Sync official plugins from CamelKit/Plugins monorepo
+        run: |
+          if git clone --depth 1 https://github.com/CamelKit/Plugins.git ../Plugins 2>/dev/null; then
+            (cd ../Plugins && pnpm install --frozen-lockfile && pnpm sync) || true
+          fi
 
       # Anti-bot guard: fail the build if client/core or any bundled plugin contains an input-fabrication vector.
       - name: Anti-bot guard (no input fabrication)
@@ -219,6 +224,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Sync official plugins from CamelKit/Plugins monorepo
+        run: |
+          if git clone --depth 1 https://github.com/CamelKit/Plugins.git ../Plugins 2>/dev/null; then
+            (cd ../Plugins && pnpm install --frozen-lockfile && pnpm sync) || true
+          fi
 
       - name: Anti-bot guard (no input fabrication)
         run: node scripts/guard-input-fabrication.mjs

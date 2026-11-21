@@ -265,6 +265,9 @@ importers:
         specifier: ^6.1.0
         version: 6.2.2
     devDependencies:
+      '@camelkit/client':
+        specifier: workspace:*
+        version: link:../client
       '@capacitor/cli':
         specifier: ^6.1.0
         version: 6.2.2(supports-color@7.2.0)

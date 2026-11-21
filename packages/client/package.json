@@ -19,10 +19,11 @@
   "author": "CamelKit Team",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "NO_SANDBOX=1 electron-vite dev",
+    "dev": "node scripts/sync-plugins.mjs && NO_SANDBOX=1 electron-vite dev",
     "start": "pnpm run build && NO_SANDBOX=1 electron-vite preview",
     "preview": "NO_SANDBOX=1 electron-vite preview",
-    "build": "electron-vite build && node scripts/copy-plugin-data.mjs",
+    "sync:plugins": "node scripts/sync-plugins.mjs",
+    "build": "node scripts/sync-plugins.mjs && electron-vite build && node scripts/copy-plugin-data.mjs",
     "dist": "pnpm run build && electron-builder --publish never",
     "try": "pnpm run build:unpack && node scripts/run-unpacked.mjs",
     "build:unpack": "pnpm run build && electron-builder --dir",
