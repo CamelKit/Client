@@ -26,6 +26,9 @@ import { PluginDataManager } from './pluginDataManager';
 
 // CamelKit Hub API endpoints
 export const DEFAULT_HUB_API_URL = 'https://api.camelkit.dev';
+// Official CamelKit/Plugins monorepo rolling dist manifest (auto-published on push to main)
+export const DEFAULT_OFFICIAL_PLUGINS_MANIFEST_URL =
+    'https://raw.githubusercontent.com/CamelKit/Plugins/dist/manifest.json';
 
 export interface ManagedPlugin {
     config: PluginConfig | undefined;
@@ -34,6 +37,9 @@ export interface ManagedPlugin {
     blob?: Blob | undefined;
     url?: string | undefined; // object URL for imported blob
     installedConfig?: PluginConfig | undefined; // stored config of installed version
+    isBuiltIn?: boolean | undefined;
+    builtInClass?: (new () => Plugin) | undefined;
+    builtInVersion?: string | undefined;
 }
 
 export class PluginManager {
@@ -154,12 +160,14 @@ export class PluginManager {
         // 1. Unconditionally load already-installed plugins from IndexedDB (works 100% offline!)
         await this.loadInstalledPluginsFromStorage();
 
-        // 2. Query the remote Plugin Hub manifest (if online) and enrich plugin entries
+        // 2. Automatically check CamelKit/Plugins dist manifest for built-in/official plugin updates
+        await this.syncOfficialPlugins();
+
+        // 3. Query the remote Plugin Hub manifest (if online) and enrich plugin entries
         try {
             const pluginConfigs = await this.obtainPluginConfigs();
             for (const pluginConfig of pluginConfigs) {
-                const key = this.getPluginKey(pluginConfig);
-                const managed = this.managedPlugins.find((mp) => mp.config && this.getPluginKey(mp.config) === key);
+                const managed = this.findMatchingManagedPlugin(pluginConfig);
                 if (!managed) {
                     const managedPlugin: ManagedPlugin = {
                         config: pluginConfig,
@@ -178,6 +186,130 @@ export class PluginManager {
         await this.populatePluginHub();
     }
 
+    public async getOfficialPluginsManifestUrl(): Promise<string> {
+        let configured: any;
+        try {
+            configured = await (window as any).settings?.getByName?.('Official Plugins Manifest URL');
+        } catch {
+            // ignore
+        }
+        if (typeof configured === 'string' && configured.trim().length > 0) {
+            return configured.trim();
+        }
+        const envUrl = (typeof process !== 'undefined' && process.env?.CAMELKIT_OFFICIAL_PLUGINS_URL) ||
+            ((import.meta as any)?.env?.VITE_OFFICIAL_PLUGINS_URL);
+        if (typeof envUrl === 'string' && envUrl.trim().length > 0) {
+            return envUrl.trim();
+        }
+        return DEFAULT_OFFICIAL_PLUGINS_MANIFEST_URL;
+    }
+
+    /**
+     * Automatically detects and applies updates (and newly added official plugins) directly from
+     * the CamelKit/Plugins `dist` branch manifest without requiring a Client release or manual Hub click.
+     */
+    public async syncOfficialPlugins(): Promise<void> {
+        if (!this.databaseManager.database) {
+            await this.databaseManager.initDB();
+        }
+        if (!this.databaseManager.database) return;
+
+        const manifestUrl = await this.getOfficialPluginsManifestUrl();
+        try {
+            const res = await fetch(manifestUrl, { cache: 'no-cache' });
+            if (!res.ok) {
+                console.warn(`[CamelKit] Official plugins manifest unavailable (${res.status}): ${manifestUrl}`);
+                return;
+            }
+            const manifest = await res.json();
+            const entries: PluginConfig[] = Array.isArray(manifest)
+                ? manifest
+                : Array.isArray(manifest?.plugins)
+                    ? manifest.plugins
+                    : [];
+
+            for (const remoteConfig of entries) {
+                if (!remoteConfig || typeof remoteConfig !== 'object') continue;
+                const key = this.getPluginKey(remoteConfig);
+                let managed = this.findMatchingManagedPlugin(remoteConfig, key);
+
+                // Skip if we already have this exact verified asset SHA cached & loaded
+                if (
+                    managed?.installedConfig?.asset_sha &&
+                    remoteConfig.asset_sha &&
+                    managed.installedConfig.asset_sha.toLowerCase() === remoteConfig.asset_sha.toLowerCase() &&
+                    managed.instance
+                ) {
+                    continue;
+                }
+
+                try {
+                    const assetUrl = await this.downloadAndVerifyAsset(remoteConfig);
+                    if (!assetUrl) continue;
+
+                    const pluginModule = await import(/* @vite-ignore */ assetUrl);
+                    const PluginClass = pluginModule.default;
+                    if (typeof PluginClass !== 'function') {
+                        URL.revokeObjectURL(assetUrl);
+                        continue;
+                    }
+
+                    // Re-fetch managed entry in case downloadAndVerifyAsset didn't have one yet
+                    if (!managed) {
+                        managed = {
+                            config: undefined,
+                            class: PluginClass,
+                            instance: undefined,
+                            isBuiltIn: true,
+                            builtInClass: PluginClass,
+                            builtInVersion: remoteConfig.version ?? '1.0.0',
+                        };
+                        this.managedPlugins.push(managed);
+                    }
+
+                    // Extract the downloaded blob from the object URL if downloadAndVerifyAsset couldn't attach it
+                    let blob = managed.blob;
+                    if (!blob) {
+                        const blobResp = await fetch(assetUrl);
+                        blob = await blobResp.blob();
+                    }
+
+                    // Hot-swap running built-in/older instance cleanly
+                    if (managed.instance) {
+                        this.unregisterPlugin(managed.instance);
+                    }
+                    if (managed.url && managed.url !== assetUrl) {
+                        URL.revokeObjectURL(managed.url);
+                    }
+
+                    managed.class = PluginClass;
+                    managed.blob = blob;
+                    managed.url = assetUrl;
+                    managed.installedConfig = remoteConfig;
+                    managed.isBuiltIn = true;
+
+                    this.registerPlugin(PluginClass);
+
+                    await this.databaseManager.database.put(
+                        'plugins',
+                        {
+                            config: remoteConfig,
+                            blob,
+                        },
+                        key
+                    );
+                    console.info(
+                        `[CamelKit] Auto-updated official plugin "${this.getPluginTitle(remoteConfig)}" to ${this.getPluginVersion(remoteConfig)}.`
+                    );
+                } catch (err) {
+                    console.warn(`[CamelKit] Failed to auto-update official plugin "${this.getPluginTitle(remoteConfig)}":`, err);
+                }
+            }
+        } catch (e) {
+            console.warn('[CamelKit] Official plugins auto-sync skipped (offline?):', e);
+        }
+    }
+
     /**
      * Load previously installed plugins directly from IndexedDB without relying on Hub connectivity.
      */
@@ -194,11 +326,8 @@ export class PluginManager {
                 const installedPlugin = await this.databaseManager.database.get('plugins', key);
                 if (!installedPlugin || !installedPlugin.blob) continue;
 
-                let managed = this.managedPlugins.find(
-                    (mp) => (mp.config && this.getPluginKey(mp.config) === key) ||
-                            (mp.installedConfig && this.getPluginKey(mp.installedConfig) === key)
-                );
-                if (managed?.instance) continue;
+                let managed = this.findMatchingManagedPlugin(installedPlugin.config, String(key));
+                if (managed?.instance && !managed.isBuiltIn) continue;
 
                 const blob = installedPlugin.blob as Blob;
                 const url = await this.createPluginModuleUrl(blob);
@@ -210,6 +339,21 @@ export class PluginManager {
                         continue;
                     }
                     if (!managed) {
+                        // Also check if the imported class's pluginName matches an already-registered built-in plugin
+                        try {
+                            const tempInstance = new pluginClass();
+                            managed = this.findMatchingManagedPlugin(installedPlugin.config, tempInstance.pluginName);
+                        } catch {
+                            // ignore
+                        }
+                    }
+
+                    if (managed?.instance && managed.isBuiltIn) {
+                        // Override built-in plugin instance with Hub-installed version from IndexedDB
+                        this.unregisterPlugin(managed.instance);
+                    }
+
+                    if (!managed) {
                         managed = {
                             config: installedPlugin.config,
                             class: pluginClass,
@@ -220,6 +364,7 @@ export class PluginManager {
                         };
                         this.managedPlugins.push(managed);
                     } else {
+                        managed.config = managed.config ?? installedPlugin.config;
                         managed.class = pluginClass;
                         managed.blob = blob;
                         managed.url = url;
@@ -234,6 +379,41 @@ export class PluginManager {
         } catch (e) {
             console.error('[CamelKit] Error loading installed plugins from IndexedDB:', e);
         }
+    }
+
+    private normalizePluginSlug(value?: string): string {
+        if (!value) return '';
+        return value
+            .toLowerCase()
+            .replace(/^(?:@camelkit\/plugin-|camelkit-|evillite-)/, '')
+            .replace(/plugin$/, '')
+            .replace(/[^a-z0-9]/g, '');
+    }
+
+    private findMatchingManagedPlugin(config?: PluginConfig, fallbackKey?: string): ManagedPlugin | undefined {
+        const key = config ? this.getPluginKey(config) : fallbackKey ?? '';
+        const targetSlugs = new Set<string>();
+        if (key) targetSlugs.add(this.normalizePluginSlug(key));
+        if (fallbackKey) targetSlugs.add(this.normalizePluginSlug(fallbackKey));
+        if (config?.name) targetSlugs.add(this.normalizePluginSlug(config.name));
+        if (config?.display_name) targetSlugs.add(this.normalizePluginSlug(config.display_name));
+        if (config?.repository_name) targetSlugs.add(this.normalizePluginSlug(config.repository_name));
+        targetSlugs.delete('');
+
+        return this.managedPlugins.find((mp) => {
+            if (key && mp.config && this.getPluginKey(mp.config) === key) return true;
+            if (key && mp.installedConfig && this.getPluginKey(mp.installedConfig) === key) return true;
+            const mpSlugs = [
+                mp.instance?.pluginName,
+                mp.config?.name,
+                mp.config?.display_name,
+                mp.config?.repository_name,
+                mp.installedConfig?.name,
+            ]
+                .map((s) => this.normalizePluginSlug(s))
+                .filter(Boolean);
+            return mpSlugs.some((slug) => targetSlugs.has(slug));
+        });
     }
 
     public async getHubApiUrl(): Promise<string> {
@@ -302,8 +482,7 @@ export class PluginManager {
     public async refreshHub(): Promise<void> {
         const freshConfigs = await this.obtainPluginConfigs();
         for (const config of freshConfigs) {
-            const key = this.getPluginKey(config);
-            const existing = this.managedPlugins.find((p) => this.getPluginKey(p.config) === key);
+            const existing = this.findMatchingManagedPlugin(config);
             if (existing) {
                 existing.config = config;
             } else {
@@ -530,12 +709,27 @@ export class PluginManager {
                         plugin.url = undefined;
                     }
                     plugin.blob = undefined;
-                    plugin.installedConfig = undefined;
-                    await this.settingsManager.refresh();
-                    installBtn.disabled = false;
-                    if (actionsRow.contains(uninstallButton)) actionsRow.removeChild(uninstallButton);
-                    updateButton.style.display = 'none';
-                    actionsRow.appendChild(installBtn);
+                    if (plugin.isBuiltIn && plugin.builtInClass) {
+                        plugin.class = plugin.builtInClass;
+                        plugin.installedConfig = {
+                            name: plugin.config.name ?? this.getPluginTitle(plugin.config),
+                            author: plugin.config.author,
+                            version: plugin.builtInVersion ?? '1.0.0',
+                        };
+                        this.registerPlugin(plugin.builtInClass);
+                        await this.settingsManager.refresh();
+                        if (actionsRow.contains(uninstallButton)) actionsRow.removeChild(uninstallButton);
+                        const upToDate = this.isPluginUpToDate(plugin.installedConfig, plugin.config);
+                        updateButton.style.display = upToDate ? 'none' : 'inline-flex';
+                        if (!upToDate && !actionsRow.contains(updateButton)) actionsRow.appendChild(updateButton);
+                    } else {
+                        plugin.installedConfig = undefined;
+                        await this.settingsManager.refresh();
+                        installBtn.disabled = false;
+                        if (actionsRow.contains(uninstallButton)) actionsRow.removeChild(uninstallButton);
+                        updateButton.style.display = 'none';
+                        actionsRow.appendChild(installBtn);
+                    }
                 } catch (error) {
                     console.error(`[CamelKit] Failed to uninstall plugin:`, error);
                     uninstallButton.textContent = 'Failed';
@@ -571,6 +765,12 @@ export class PluginManager {
                     plugin.installedConfig = plugin.config;
                     version.textContent = `Version: ${this.getPluginVersion(plugin.config)}`;
                     updateButton.style.display = 'none';
+                    if (plugin.isBuiltIn) {
+                        uninstallButton.textContent = 'Reset to Built-in';
+                    }
+                    if (!actionsRow.contains(uninstallButton)) {
+                        actionsRow.appendChild(uninstallButton);
+                    }
                 } catch (error) {
                     console.error(`[CamelKit] Failed to update plugin:`, error);
                     updateButton.textContent = 'Failed';
@@ -594,8 +794,15 @@ export class PluginManager {
             const isInstalled = this.didInitialSync ? plugin.blob : await this.syncPluginState(plugin.config);
             if (isInstalled) {
                 plugin.blob = isInstalled;
+                if (plugin.isBuiltIn) {
+                    uninstallButton.textContent = 'Reset to Built-in';
+                }
                 // Show uninstall; and show update if installed version differs from latest
                 actionsRow.appendChild(uninstallButton);
+                const upToDate = this.isPluginUpToDate(plugin.installedConfig, plugin.config);
+                updateButton.style.display = upToDate ? 'none' : 'inline-flex';
+                if (!upToDate) actionsRow.appendChild(updateButton);
+            } else if (plugin.isBuiltIn) {
                 const upToDate = this.isPluginUpToDate(plugin.installedConfig, plugin.config);
                 updateButton.style.display = upToDate ? 'none' : 'inline-flex';
                 if (!upToDate) actionsRow.appendChild(updateButton);
@@ -611,7 +818,7 @@ export class PluginManager {
     private async syncPluginState(plugin: PluginConfig): Promise<Blob | undefined> {
         if (!this.databaseManager.database) return undefined; // DB guard
         const key = this.getPluginKey(plugin);
-        const managed = this.managedPlugins.find((mp) => mp.config && this.getPluginKey(mp.config) === key);
+        const managed = this.findMatchingManagedPlugin(plugin, key);
         if (managed && managed.blob && managed.instance) {
             return managed.blob;
         }
@@ -622,9 +829,10 @@ export class PluginManager {
             try {
                 const pluginModule = await import(url);
                 const pluginClass = pluginModule.default;
-                // Associate to managed plugin by key
-                const managed = this.managedPlugins.find((mp) => this.getPluginKey(mp.config) === key);
                 if (managed) {
+                    if (managed.instance && managed.isBuiltIn) {
+                        this.unregisterPlugin(managed.instance);
+                    }
                     managed.class = pluginClass;
                     managed.blob = blob;
                     managed.url = url;
@@ -772,10 +980,25 @@ export class PluginManager {
     registerPlugin<T extends Plugin>(pluginClass: new () => T): boolean {
         const pluginInstance = new pluginClass();
         console.info(`[Highlite] New plugin ${pluginInstance.pluginName} registered`);
-        // Find or create managed entry by class
-        let managedPlugin = this.managedPlugins.find((mp) => mp.class === pluginClass);
+        // Find or create managed entry by class or normalized plugin name
+        let managedPlugin =
+            this.managedPlugins.find((mp) => mp.class === pluginClass) ??
+            this.findMatchingManagedPlugin(undefined, pluginInstance.pluginName);
         if (!managedPlugin) {
-            managedPlugin = { config: undefined, class: pluginClass, instance: pluginInstance };
+            const builtInVersion = String((pluginInstance as any).version || '1.0.0');
+            managedPlugin = {
+                config: undefined,
+                class: pluginClass,
+                instance: pluginInstance,
+                isBuiltIn: true,
+                builtInClass: pluginClass,
+                builtInVersion,
+                installedConfig: {
+                    name: pluginInstance.pluginName,
+                    author: pluginInstance.author,
+                    version: builtInVersion,
+                },
+            };
             this.managedPlugins.push(managedPlugin);
         } else {
             managedPlugin.class = pluginClass;
